@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { Project, DevelopmentPlan } from "../types";
+import { Project, DevelopmentPlan, Asset } from "../types";
 
 // For basic text tasks
 const aiText = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -79,7 +79,6 @@ export async function analyzePlanPriorityAI(plan: DevelopmentPlan): Promise<stri
 
 /**
  * Generates a high-resolution satellite map image using gemini-3-pro-image-preview.
- * This model requires a user-selected API key from a paid project.
  */
 export async function generateSatelliteImage(prompt: string): Promise<string | null> {
   try {
@@ -94,11 +93,7 @@ export async function generateSatelliteImage(prompt: string): Promise<string | n
     const response = await aiImage.models.generateContent({
       model: 'gemini-3-pro-image-preview',
       contents: {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
+        parts: [{ text: prompt }],
       },
       config: {
         imageConfig: {
@@ -121,5 +116,28 @@ export async function generateSatelliteImage(prompt: string): Promise<string | n
         await window.aistudio.openSelectKey();
     }
     throw error;
+  }
+}
+
+/**
+ * Analyzes an Asset to provide a maintenance strategy.
+ */
+export async function analyzeAssetHealthAI(asset: Asset): Promise<string> {
+  try {
+    const response = await aiText.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `วิเคราะห์สภาพสินทรัพย์โครงสร้างพื้นฐานและแนะนำแผนซ่อมบำรุง
+      ประเภท: ${asset.category}
+      ปีที่สร้าง: ${asset.constructionYear}
+      อายุการใช้งานที่คาดหวัง: ${asset.expectedLifeYears} ปี
+      สภาพปัจจุบัน: ${asset.condition}
+      งบซ่อมบำรุงล่าสุด: ${asset.maintenanceBudget.toLocaleString()} บาท
+      ประวัติการซ่อม: ${asset.history.join(", ")}
+      
+      กรุณาตอบเป็นภาษาไทยสั้นๆ 2-3 ประโยค แนะนำว่าควรทำอย่างไรในลำดับถัดไปเพื่อยืดอายุการใช้งาน`,
+    });
+    return response.text || "ไม่สามารถวิเคราะห์ข้อมูลสินทรัพย์ได้";
+  } catch (error) {
+    return "เกิดข้อผิดพลาดในการประมวลผลข้อมูล AI สำหรับสินทรัพย์";
   }
 }

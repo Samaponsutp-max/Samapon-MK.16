@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Project, ProjectStatus } from '../types';
 import { 
   Search, 
@@ -14,7 +14,9 @@ import {
   Briefcase, 
   TrendingUp,
   MoreVertical,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { getProjectSummaryAI } from '../services/geminiService';
 
@@ -29,12 +31,17 @@ type SortConfig = {
   direction: 'asc' | 'desc';
 } | null;
 
+const ITEMS_PER_PAGE = 12;
+
 const ProjectList: React.FC<ProjectListProps> = ({ projects, onEdit, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [aiInsight, setAiInsight] = useState<{id: string, text: string} | null>(null);
   const [loadingAiId, setLoadingAiId] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'projectCode', direction: 'asc' });
   const [isSortOpen, setIsSortOpen] = useState(false);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleSort = (key: keyof Project | 'effectiveBudget') => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -72,6 +79,18 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, onEdit, onDelete })
 
     return result;
   }, [projects, searchTerm, sortConfig]);
+
+  // Reset pagination when search or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortConfig]);
+
+  // Pagination Calculations
+  const totalPages = Math.ceil(filteredAndSortedProjects.length / ITEMS_PER_PAGE);
+  const paginatedProjects = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredAndSortedProjects.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredAndSortedProjects, currentPage]);
 
   const getStatusStyles = (status: ProjectStatus) => {
     switch (status) {
@@ -137,7 +156,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, onEdit, onDelete })
 
       {/* Grid of Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredAndSortedProjects.map((project) => (
+        {paginatedProjects.map((project) => (
           <div key={project.id} className="group bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 flex flex-col">
             {/* Card Header */}
             <div className="p-6 pb-4">
@@ -243,13 +262,71 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, onEdit, onDelete })
                   onClick={() => setAiInsight(null)}
                   className="text-[10px] text-indigo-400 font-bold hover:text-indigo-600 mt-3 flex items-center gap-1"
                 >
-                  <X size={12} /> ปิดความเห็น AI
+                  <XIcon size={12} /> ปิดความเห็น AI
                 </button>
               </div>
             )}
           </div>
         ))}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-slate-200">
+          <p className="text-sm text-slate-500 font-medium">
+            แสดง {Math.min(filteredAndSortedProjects.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} ถึง {Math.min(filteredAndSortedProjects.length, currentPage * ITEMS_PER_PAGE)} จากทั้งหมด {filteredAndSortedProjects.length} โครงการ
+          </p>
+          
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // Logic to show limited page numbers if there are too many
+                if (
+                  page === 1 || 
+                  page === totalPages || 
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[40px] h-10 rounded-xl text-sm font-bold transition-all ${
+                        currentPage === page 
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                } else if (
+                  (page === 2 && currentPage > 3) || 
+                  (page === totalPages - 1 && currentPage < totalPages - 2)
+                ) {
+                  return <span key={page} className="px-1 text-slate-400">...</span>;
+                }
+                return null;
+              })}
+            </div>
+            
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {filteredAndSortedProjects.length === 0 && (
         <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-20 text-center">
@@ -265,7 +342,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, onEdit, onDelete })
 };
 
 // Simple X icon replacement since it wasn't imported from lucide-react in current scope
-const X = ({size}: {size: number}) => (
+const XIcon = ({size}: {size: number}) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 );
 

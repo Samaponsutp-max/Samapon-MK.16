@@ -94,14 +94,54 @@ export const MOCK_DEVELOPMENT_PLANS: DevelopmentPlan[] = [
 
 export const MOCK_ASSETS: Asset[] = [
   {
-    id: 'ASSET-001',
+    id: 'AST-2560-RD-01',
     category: ProjectCategory.ROAD,
     constructionYear: '2560',
     expectedLifeYears: 10,
     lastChecked: '2024-01-15',
     condition: AssetCondition.FAIR,
-    maintenanceBudget: 50000,
+    maintenanceBudget: 150000,
     history: ['ซ่อมผิวทาง 2563', 'ล้างท่อข้างทาง 2565']
+  },
+  {
+    id: 'AST-2555-BLD-04',
+    category: ProjectCategory.BUILDING,
+    constructionYear: '2555',
+    expectedLifeYears: 30,
+    lastChecked: '2024-03-20',
+    condition: AssetCondition.POOR,
+    maintenanceBudget: 850000,
+    history: ['ทาสีใหม่ 2560', 'ซ่อมระบบไฟ 2564']
+  },
+  {
+    id: 'AST-2565-WAT-12',
+    category: ProjectCategory.WATER,
+    constructionYear: '2565',
+    expectedLifeYears: 20,
+    lastChecked: '2024-05-10',
+    condition: AssetCondition.GOOD,
+    maintenanceBudget: 25000,
+    history: ['ติดตั้งมิเตอร์อัจฉริยะ 2566']
+  },
+  {
+    id: 'AST-2562-ELE-09',
+    category: ProjectCategory.ELECTRICITY,
+    constructionYear: '2562',
+    expectedLifeYears: 15,
+    lastChecked: '2024-02-28',
+    condition: AssetCondition.GOOD,
+    maintenanceBudget: 120000,
+    history: ['เปลี่ยนหลอด LED ทั้งสาย 2564']
+  },
+  {
+    id: 'AST-2558-DRN-02',
+    category: ProjectCategory.DRAINAGE,
+    constructionYear: '2558',
+    expectedLifeYears: 25,
+    lastChecked: '2024-04-12',
+    condition: AssetCondition.FAIR,
+    maintenanceBudget: 420000,
+    history: ['ขุดลอกตะกอน 2562', 'ขุดลอกตะกอน 2566']
   }
 ];
 

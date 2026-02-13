@@ -6,10 +6,10 @@ import ProjectList from './components/ProjectList';
 import ProjectForm from './components/ProjectForm';
 import UserManagement from './components/UserManagement';
 import PlanDatabase from './components/PlanDatabase';
+import AssetDatabase from './components/AssetDatabase';
 import WebMap from './components/WebMap';
-import { Project, UserRole, UserAccount, DevelopmentPlan } from './types';
-import { MOCK_PROJECTS, MOCK_USERS, MOCK_DEVELOPMENT_PLANS } from './constants';
-// Fix: Added missing Construction, Wrench, and ShieldCheck icons
+import { Project, UserRole, UserAccount, DevelopmentPlan, Asset } from './types';
+import { MOCK_PROJECTS, MOCK_USERS, MOCK_DEVELOPMENT_PLANS, MOCK_ASSETS } from './constants';
 import { UserCircle, Bell, Settings as SettingsIcon, LogOut, Construction, Wrench, ShieldCheck, Globe } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
   const [users, setUsers] = useState<UserAccount[]>(MOCK_USERS);
   const [plans, setPlans] = useState<DevelopmentPlan[]>(MOCK_DEVELOPMENT_PLANS);
+  const [assets, setAssets] = useState<Asset[]>(MOCK_ASSETS);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   // Persistence (Mock)
@@ -33,6 +34,10 @@ const App: React.FC = () => {
     const savedPlans = localStorage.getItem('infra_plans');
     if (savedPlans) {
       setPlans(JSON.parse(savedPlans));
+    }
+    const savedAssets = localStorage.getItem('infra_assets');
+    if (savedAssets) {
+      setAssets(JSON.parse(savedAssets));
     }
   }, []);
 
@@ -101,6 +106,8 @@ const App: React.FC = () => {
         return <WebMap projects={projects} />;
       case 'plan-database':
         return <PlanDatabase plans={plans} onAddPlan={() => alert('Feature coming soon: Integrated Plan Wizard')} />;
+      case 'asset-database':
+        return <AssetDatabase assets={assets} />;
       case 'projects':
         return (
           <ProjectList 
@@ -142,36 +149,44 @@ const App: React.FC = () => {
                       <Wrench size={24} />
                    </div>
                    <div>
-                      <h3 className="text-2xl font-bold text-slate-800">Smart Maintenance Database</h3>
-                      <p className="text-slate-500">ระบบวิเคราะห์สภาพทรัพย์สินและการวางแผนซ่อมบำรุงเชิงป้องกัน</p>
+                      <h3 className="text-2xl font-bold text-slate-800">Smart Maintenance Hub</h3>
+                      <p className="text-slate-500">ระบบบริหารจัดการการแจ้งซ่อมและประมวลผลสภาพทรัพย์สิน</p>
                    </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <div className="p-6 border border-amber-100 rounded-2xl bg-amber-50/50 hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-4">
-                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-red-200">Critical</span>
-                        <span className="text-xs text-slate-400">ID: ASSET-092</span>
+                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-red-200">Critical Maintenance</span>
+                        <span className="text-xs text-slate-400">Ref: REPAIR-092</span>
                       </div>
                       <p className="font-bold text-lg text-slate-900 mb-1">อาคารสำนักงานเทศบาล</p>
                       <p className="text-sm text-slate-600">อายุ 12 ปี | สภาพ: ชำรุด (Poor)</p>
                       <div className="mt-4 pt-4 border-t border-amber-200/50">
-                        <p className="text-xs font-bold text-amber-800 mb-1 tracking-wide uppercase">AI Maintenance Advice:</p>
-                        <p className="text-sm text-slate-700 italic">"ควรเร่งปรับปรุงระบบหลังคาและทางหนีไฟเพื่อความปลอดภัยตามกฎหมายควบคุมอาคารปี 2567"</p>
+                        <p className="text-xs font-bold text-amber-800 mb-1 tracking-wide uppercase">AI Recommendation:</p>
+                        <p className="text-sm text-slate-700 italic">"เร่งตรวจสอบโครงสร้างหลังคาเนื่องจากพบรอยร้าวขยายตัว แนะนำให้จัดลำดับความสำคัญในงบประมาณก้อนหน้า"</p>
                       </div>
                    </div>
                    <div className="p-6 border border-green-100 rounded-2xl bg-green-50/50 hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-4">
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-green-200">Optimal</span>
-                        <span className="text-xs text-slate-400">ID: ASSET-115</span>
+                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold uppercase tracking-wider border border-green-200">Scheduled Check</span>
+                        <span className="text-xs text-slate-400">Ref: REPAIR-115</span>
                       </div>
                       <p className="font-bold text-lg text-slate-900 mb-1">ถนนคอนกรีตหมู่ 4</p>
                       <p className="text-sm text-slate-600">อายุ 3 ปี | สภาพ: ดี (Good)</p>
                       <div className="mt-4 pt-4 border-t border-green-200/50">
-                        <p className="text-xs font-bold text-green-800 mb-1 tracking-wide uppercase">AI Maintenance Advice:</p>
-                        <p className="text-sm text-slate-700 italic">"ตรวจสอบผิวจราจรทุก 6 เดือนเพื่อป้องกันการเกิดน้ำขังสะสมบนผิวทาง"</p>
+                        <p className="text-xs font-bold text-green-800 mb-1 tracking-wide uppercase">Maintenance Advice:</p>
+                        <p className="text-sm text-slate-700 italic">"ยังอยู่ในสภาพดีเยี่ยม ควรล้างท่อระบายน้ำขนานเส้นทางเพื่อป้องกันการกัดเซาะในช่วงฤดูฝน"</p>
                       </div>
                    </div>
+                </div>
+                <div className="mt-8 text-center">
+                  <button 
+                    onClick={() => setActiveTab('asset-database')}
+                    className="text-blue-600 font-bold text-sm hover:underline"
+                  >
+                    ดูรายละเอียดสินทรัพย์ทั้งหมดในคลังฐานข้อมูล &rarr;
+                  </button>
                 </div>
              </div>
           </div>

@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   Users,
   Map,
-  Globe
+  Globe,
+  Database
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole }) 
     { id: 'web-map', label: 'แผนที่ฐานข้อมูล (Map)', icon: Globe, roles: ['Admin', 'กองช่าง', 'ผู้บริหาร'] },
     { id: 'plan-database', label: 'แผนพัฒนาท้องถิ่น', icon: Map, roles: ['Admin', 'กองช่าง', 'ผู้บริหาร'] },
     { id: 'projects', label: 'โครงการงบประมาณ', icon: ClipboardList, roles: ['Admin', 'กองช่าง', 'เจ้าหน้าที่การเงิน'] },
+    { id: 'asset-database', label: 'คลังสินทรัพย์ (Assets)', icon: Database, roles: ['Admin', 'กองช่าง', 'ผู้บริหาร'] },
     { id: 'form', label: 'เพิ่มข้อมูลโครงการ', icon: FileText, roles: ['Admin', 'กองช่าง'] },
     { id: 'tracking', label: 'ติดตามการก่อสร้าง', icon: Construction, roles: ['Admin', 'กองช่าง'] },
     { id: 'maintenance', label: 'งานซ่อมบำรุง', icon: Wrench, roles: ['Admin', 'กองช่าง', 'ผู้บริหาร'] },

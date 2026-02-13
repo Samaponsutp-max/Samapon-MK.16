@@ -19,7 +19,9 @@ import {
   Sparkles,
   Download,
   Loader2,
-  Camera
+  Camera,
+  ChevronRight,
+  Globe
 } from 'lucide-react';
 import { generateSatelliteImage } from '../services/geminiService';
 
@@ -36,11 +38,12 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
   const [generationStep, setGenerationStep] = useState(0);
 
   const generationMessages = [
-    "กำลังประมวลผลพิกัดภูมิศาสตร์...",
-    "ดึงข้อมูลภาพถ่ายดาวเทียมความละเอียดสูง...",
-    "กำลังสังเคราะห์รายละเอียดถนนและอาคาร...",
-    "ปรับแต่งสีธรรมชาติและความคมชัดระดับ 4K...",
-    "กำลังส่งออกภาพแผนที่ดิจิทัล..."
+    "กำลังประมวลผลพิกัดภูมิศาสตร์ (Geocoding)...",
+    "ดึงข้อมูลภาพถ่ายดาวเทียมความละเอียดสูงจากคลังข้อมูล...",
+    "วิเคราะห์รายละเอียดอาคารและสภาพแวดล้อม...",
+    "กำลังสร้างภาพจำลองพื้นที่ก่อสร้าง (Rendering 4K)...",
+    "ปรับแต่งสีธรรมชาติและความคมชัดขั้นสุดท้าย...",
+    "ระบบประมวลผลเสร็จสมบูรณ์ พร้อมแสดงผล"
   ];
 
   useEffect(() => {
@@ -48,7 +51,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
     if (isGenerating) {
       interval = setInterval(() => {
         setGenerationStep(prev => (prev + 1) % generationMessages.length);
-      }, 3000);
+      }, 3500);
     } else {
       setGenerationStep(0);
     }
@@ -64,6 +67,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
       setGeneratedMap(imageUrl);
     } catch (error) {
       console.error("Failed to generate map:", error);
+      alert("เกิดข้อผิดพลาดในการสร้างภาพ กรุณาตรวจสอบ API Key หรือลองอีกครั้งภายหลัง");
     } finally {
       setIsGenerating(false);
     }
@@ -103,67 +107,44 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">แดชบอร์ดสรุปภาพรวม</h2>
-          <p className="text-slate-500">ข้อมูลสรุปงบประมาณและสถานะโครงการโครงสร้างพื้นฐาน</p>
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">แดชบอร์ดสรุปภาพรวม</h2>
+          <p className="text-slate-500 font-medium">ข้อมูลสรุปงบประมาณและสถานะโครงการโครงสร้างพื้นฐานปี 2567</p>
         </div>
-        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200 text-sm font-medium text-slate-600">
-          ปีงบประมาณ 2567
+        <div className="flex items-center gap-2 bg-white px-5 py-2.5 rounded-2xl shadow-sm border border-slate-200 text-sm font-bold text-slate-600">
+          <Globe size={18} className="text-blue-500" />
+          สถานะข้อมูลล่าสุด: วันนี้ {new Date().toLocaleTimeString('th-TH')}
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-              <TrendingUp size={20} />
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {[
+          { label: 'งบประมาณรวม', val: `฿${(kpis.totalBudget / 1000000).toFixed(2)}M`, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', sub: '+12% จากปีที่แล้ว' },
+          { label: 'โครงการแล้วเสร็จ', val: `${kpis.completed} โครงการ`, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', sub: `คิดเป็น ${kpis.completionRate}%` },
+          { label: 'กำลังดำเนินการ', val: `${kpis.inProgress} โครงการ`, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', sub: 'ตามแผนงาน 92%' },
+          { label: 'โครงการล่าช้า', val: `${kpis.delayed} โครงการ`, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50', sub: 'ต้องเร่งตรวจสอบ' },
+        ].map((card, idx) => (
+          <div key={idx} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className={`${card.bg} ${card.color} p-3 rounded-2xl`}>
+                <card.icon size={22} />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{card.label}</span>
             </div>
-            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">+12%</span>
+            <h3 className="text-2xl font-black text-slate-900 leading-tight mb-1">{card.val}</h3>
+            <p className="text-xs font-bold text-slate-400">{card.sub}</p>
           </div>
-          <p className="text-sm text-slate-500">งบประมาณรวมทั้งสิ้น</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">
-            ฿{(kpis.totalBudget / 1000000).toFixed(2)}M
-          </h3>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <div className="bg-green-50 p-2 rounded-lg text-green-600">
-              <CheckCircle size={20} />
-            </div>
-            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{kpis.completionRate}%</span>
-          </div>
-          <p className="text-sm text-slate-500">โครงการแล้วเสร็จ</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">{kpis.completed} โครงการ</h3>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <div className="bg-orange-50 p-2 rounded-lg text-orange-600">
-              <Clock size={20} />
-            </div>
-          </div>
-          <p className="text-sm text-slate-500">กำลังดำเนินการ</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">{kpis.inProgress} โครงการ</h3>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <div className="bg-red-50 p-2 rounded-lg text-red-600">
-              <AlertTriangle size={20} />
-            </div>
-          </div>
-          <p className="text-sm text-slate-500">โครงการล่าช้า</p>
-          <h3 className="text-2xl font-bold text-slate-900 mt-1">{kpis.delayed} โครงการ</h3>
-        </div>
+        ))}
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h4 className="font-semibold text-slate-800 mb-4">สัดส่วนสถานะโครงการ</h4>
+        <div className="lg:col-span-1 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <h4 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <PieChart size={18} className="text-blue-500" /> สัดส่วนสถานะโครงการ
+          </h4>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -171,35 +152,40 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
                   data={statusData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
+                  innerRadius={65}
+                  outerRadius={85}
+                  paddingAngle={8}
                   dataKey="value"
+                  stroke="none"
                 >
                   {statusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                />
+                <Legend iconType="circle" />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h4 className="font-semibold text-slate-800 mb-4">งบประมาณแยกตามประเภท (ล้านบาท)</h4>
+        <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <h4 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <BarChart size={18} className="text-blue-500" /> งบประมาณแยกประเภท (ล้านบาท)
+          </h4>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={categoryBudgetData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 600, fill: '#94a3b8'}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 600, fill: '#94a3b8'}} />
                 <Tooltip 
                   cursor={{fill: '#f8fafc'}}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
                 />
-                <Bar dataKey="budget" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="budget" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -207,43 +193,55 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
       </div>
 
       {/* Map Preview Area */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MapIcon className="text-blue-600" size={20} />
-            <h4 className="font-semibold text-slate-800">แผนที่ตำแหน่งโครงการ (GIS Viewer)</h4>
+      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
+              <MapIcon size={24} />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-800">ระบบแผนที่เชิงพื้นที่ (GIS Viewer)</h4>
+              <p className="text-xs text-slate-400 font-medium">สำรวจพื้นที่โครงการแบบ Dynamic Real-time</p>
+            </div>
           </div>
           <button 
             onClick={() => setIsMapModalOpen(true)}
-            className="flex items-center gap-1.5 text-blue-600 text-sm font-bold hover:text-blue-700 transition-colors bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"
+            className="flex items-center gap-2 bg-slate-900 text-white text-xs font-bold px-5 py-3 rounded-2xl hover:bg-slate-800 transition-all shadow-lg"
           >
-            <Maximize2 size={14} />
-            เปิดแบบเต็มหน้าจอ
+            <Maximize2 size={16} />
+            สำรวจแผนที่เต็มจอ
           </button>
         </div>
-        <div className="aspect-[21/9] bg-slate-100 rounded-lg flex items-center justify-center relative overflow-hidden group border border-slate-200">
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#000 0.5px, transparent 0.5px)', backgroundSize: '20px 20px' }}></div>
-          <div className="absolute inset-0 pointer-events-none border border-slate-300/20" style={{ background: 'linear-gradient(to right, transparent 49.5%, #e2e8f0 49.5%, #e2e8f0 50.5%, transparent 50.5%), linear-gradient(to bottom, transparent 49.5%, #e2e8f0 49.5%, #e2e8f0 50.5%, transparent 50.5%)', backgroundSize: '100px 100px' }}></div>
-
-          <div className="relative text-center p-8 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200 shadow-xl max-w-md mx-auto transform group-hover:scale-105 transition-transform duration-500">
-            <div className="bg-blue-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-blue-200">
-               <Navigation size={24} className="rotate-45" />
+        
+        <div className="aspect-[21/9] bg-slate-950 rounded-[32px] flex items-center justify-center relative overflow-hidden group border border-slate-200 shadow-inner">
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 0.5px, transparent 0.5px)', backgroundSize: '30px 30px' }}></div>
+          
+          <div className="relative text-center p-10 bg-white/10 backdrop-blur-2xl rounded-[40px] border border-white/20 shadow-2xl max-w-md mx-4 transform group-hover:scale-[1.02] transition-transform duration-700">
+            <div className="bg-indigo-600 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-6 text-white shadow-xl shadow-indigo-500/30 rotate-12">
+               <Globe size={32} />
             </div>
-            <p className="text-slate-800 font-bold text-lg mb-1">GIS Dynamic Mapping</p>
-            <p className="text-slate-500 text-xs mb-4">เชื่อมต่อข้อมูลพิกัดโครงการแบบเรียลไทม์ผ่านดาวเทียม</p>
+            <h5 className="text-white font-black text-xl mb-2 tracking-tight">GIS Dynamic Mapping</h5>
+            <p className="text-indigo-200/70 text-sm mb-6 leading-relaxed">เชื่อมต่อข้อมูลพิกัดโครงการและชั้นข้อมูลภูมิสารสนเทศผ่านดาวเทียมความแม่นยำสูง</p>
             
-            <div className="flex justify-center gap-3">
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-green-500"></div><span className="text-[10px] font-bold text-slate-600">ปกติ</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div><span className="text-[10px] font-bold text-slate-600">กำลังทำ</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div><span className="text-[10px] font-bold text-slate-600">แจ้งซ่อม</span></div>
+            <div className="flex justify-center gap-4 mb-8">
+              {[
+                { c: 'bg-emerald-500', t: 'ปกติ' },
+                { c: 'bg-amber-500', t: 'กำลังก่อสร้าง' },
+                { c: 'bg-rose-500', t: 'แจ้งเหตุขัดข้อง' }
+              ].map((dot, i) => (
+                <div key={i} className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full border border-white/10">
+                  <div className={`w-2 h-2 rounded-full ${dot.c} shadow-sm shadow-black/50`}></div>
+                  <span className="text-[10px] font-black text-white uppercase tracking-wider">{dot.t}</span>
+                </div>
+              ))}
             </div>
 
             <button 
               onClick={() => setIsMapModalOpen(true)}
-              className="mt-6 w-full bg-slate-900 text-white text-xs font-bold py-2 rounded-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+              className="w-full bg-white text-slate-900 text-sm font-black py-4 rounded-2xl hover:bg-slate-100 transition-all flex items-center justify-center gap-3 shadow-xl"
             >
-              <Search size={14} />
-              สำรวจพื้นที่ก่อสร้าง
+              <Search size={18} />
+              เปิดระบบสำรวจพื้นที่ AI
             </button>
           </div>
         </div>
@@ -251,178 +249,213 @@ const Dashboard: React.FC<DashboardProps> = ({ projects }) => {
 
       {/* Full Screen GIS Modal */}
       {isMapModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col animate-in fade-in duration-500">
           {/* Header */}
-          <div className="bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between text-white">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-xl">
-                <MapIcon size={20} />
+          <div className="bg-slate-900 border-b border-white/5 p-5 flex items-center justify-between text-white shadow-2xl">
+            <div className="flex items-center gap-4">
+              <div className="bg-indigo-600 p-3 rounded-2xl shadow-xl shadow-indigo-500/20">
+                <MapIcon size={24} />
               </div>
               <div>
-                <h3 className="font-bold">InfraGuard GIS Pro - ระบบแผนที่เชิงลึก</h3>
-                <p className="text-[10px] text-slate-400">มาตราส่วน 1:5,000 • อัปเดตล่าสุด: {new Date().toLocaleTimeString('th-TH')}</p>
+                <h3 className="font-black text-lg tracking-tight">InfraGuard GIS PRO</h3>
+                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  ระบบประมวลผลภูมิสารสนเทศ • อัปเดตเรียลไทม์
+                </div>
               </div>
             </div>
+            
             <div className="flex items-center gap-4">
               <button 
                 onClick={handleGenerateSatellite}
-                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-blue-500/20 hover:scale-105 transition-transform"
+                disabled={isGenerating}
+                className="flex items-center gap-2 bg-gradient-to-br from-indigo-500 to-purple-600 px-6 py-3 rounded-2xl text-xs font-black shadow-xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
               >
-                <Sparkles size={16} />
-                AI Satellite View (4K)
+                {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                AI SATELLITE ENGINE (4K)
               </button>
-              <div className="hidden md:flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg">
-                <Search size={16} className="text-slate-500" />
-                <input type="text" placeholder="ค้นหาตามพิกัด..." className="bg-transparent border-none outline-none text-xs w-48" />
-              </div>
+              <div className="h-8 w-px bg-white/10 mx-2"></div>
               <button 
                 onClick={() => {
                   setIsMapModalOpen(false);
                   setGeneratedMap(null);
                 }}
-                className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"
+                className="p-3 hover:bg-white/10 rounded-2xl transition-colors text-slate-400 hover:text-white border border-white/5"
               >
                 <X size={24} />
               </button>
             </div>
           </div>
 
-          <div className="flex-1 relative flex">
+          <div className="flex-1 relative flex overflow-hidden">
             {/* Sidebar Controls */}
-            <div className="w-72 bg-slate-900/95 backdrop-blur-md border-r border-slate-800 p-6 overflow-y-auto hidden lg:block">
-              <h4 className="text-white text-sm font-bold mb-6 flex items-center gap-2">
-                <Layers size={16} className="text-blue-500" />
-                เลเยอร์ข้อมูล (Layers)
-              </h4>
-              
-              <div className="space-y-4">
-                {[
-                  { name: 'เขตพื้นที่เทศบาล', active: true },
-                  { name: 'โครงการก่อสร้างใหม่', active: true },
-                  { name: 'งานซ่อมบำรุงทาง', active: false },
-                  { name: 'จุดติดตั้งไฟฟ้าสาธารณะ', active: true },
-                  { name: 'ท่อระบายน้ำหลัก', active: false },
-                ].map((layer, idx) => (
-                  <label key={idx} className="flex items-center justify-between group cursor-pointer">
-                    <span className="text-xs text-slate-400 group-hover:text-white transition-colors">{layer.name}</span>
-                    <input type="checkbox" defaultChecked={layer.active} className="accent-blue-600 w-4 h-4 rounded" />
-                  </label>
-                ))}
-              </div>
+            <aside className="w-80 bg-slate-900/50 backdrop-blur-3xl border-r border-white/5 p-8 overflow-y-auto hidden lg:flex flex-col gap-8">
+              <section>
+                <h4 className="text-white text-xs font-black mb-6 flex items-center gap-3 tracking-widest uppercase opacity-60">
+                  <Layers size={16} className="text-indigo-500" /> ข้อมูลเชิงพื้นที่ (Layers)
+                </h4>
+                
+                <div className="space-y-4">
+                  {[
+                    { name: 'ขอบเขตปกครองตำบล', active: true },
+                    { name: 'หมุดตำแหน่งโครงการ', active: true },
+                    { name: 'โครงข่ายการจราจร', active: false },
+                    { name: 'จุดสำรวจทรัพยากรน้ำ', active: true },
+                  ].map((layer, idx) => (
+                    <label key={idx} className="flex items-center justify-between group cursor-pointer bg-white/5 p-3 rounded-xl hover:bg-white/10 transition-all border border-transparent hover:border-white/10">
+                      <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">{layer.name}</span>
+                      <div className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" defaultChecked={layer.active} className="sr-only peer" />
+                        <div className="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </section>
 
-              <div className="mt-12">
-                <h4 className="text-white text-sm font-bold mb-4">รายการโครงการในพื้นที่</h4>
-                <div className="space-y-2">
+              <section>
+                <h4 className="text-white text-xs font-black mb-6 tracking-widest uppercase opacity-60">ไฮไลท์โครงการสำคัญ</h4>
+                <div className="space-y-3">
                   {projects.map(p => (
-                    <div key={p.id} className="p-2.5 bg-slate-800/50 rounded-lg border border-slate-700 hover:border-blue-500 transition-all cursor-pointer group">
-                      <p className="text-[10px] font-bold text-blue-500 mb-0.5 group-hover:text-blue-400">{p.projectCode}</p>
-                      <p className="text-[11px] text-white font-medium truncate">{p.name}</p>
-                      <div className="flex items-center gap-1 mt-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${p.status === ProjectStatus.COMPLETED ? 'bg-green-500' : 'bg-orange-500'}`}></div>
-                        <span className="text-[9px] text-slate-500">{p.status}</span>
+                    <div key={p.id} className="p-4 bg-slate-800/40 rounded-2xl border border-white/5 hover:border-indigo-500 transition-all cursor-pointer group">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-[9px] font-black text-indigo-400 uppercase">{p.projectCode}</p>
+                        <div className={`w-1.5 h-1.5 rounded-full ${p.status === ProjectStatus.COMPLETED ? 'bg-emerald-500' : 'bg-amber-500'} shadow-sm shadow-black`}></div>
+                      </div>
+                      <p className="text-xs text-white font-bold leading-tight line-clamp-2 mb-3">{p.name}</p>
+                      <div className="flex items-center gap-2 text-[9px] text-slate-500 font-bold uppercase">
+                        <Navigation size={10} /> {p.area}
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
+              </section>
+            </aside>
 
-            {/* Main Interactive Map Surface */}
-            <div className="flex-1 bg-slate-950 relative overflow-hidden flex items-center justify-center">
-               {isGenerating ? (
-                 <div className="text-center p-12 max-w-md z-50">
-                    <div className="relative mb-8">
-                       <Loader2 className="w-16 h-16 text-blue-500 animate-spin mx-auto opacity-20" />
-                       <Sparkles className="w-8 h-8 text-indigo-400 animate-pulse absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                    </div>
-                    <h3 className="text-white font-bold text-xl mb-2">กำลังสร้างภาพถ่ายดาวเทียม AI</h3>
-                    <p className="text-slate-400 text-sm mb-6 h-10 transition-all animate-in fade-in slide-in-from-bottom-2 duration-500">
-                      {generationMessages[generationStep]}
-                    </p>
-                    <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                       <div 
-                         className="bg-blue-500 h-full transition-all duration-1000 ease-out" 
-                         style={{ width: `${((generationStep + 1) / generationMessages.length) * 100}%` }}
-                       ></div>
+            {/* Map Main Canvas */}
+            <main className="flex-1 bg-black relative flex items-center justify-center p-4">
+               {/* Progress Overlay During Generation */}
+               {isGenerating && (
+                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-8 animate-in fade-in duration-500">
+                    <div className="text-center max-w-md w-full">
+                       <div className="relative mb-10">
+                          <div className="absolute inset-0 bg-indigo-500/20 blur-[80px] rounded-full"></div>
+                          <div className="relative bg-slate-900 w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto shadow-2xl border border-white/10">
+                             <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+                          </div>
+                          <Sparkles className="w-10 h-10 text-indigo-300 absolute -top-4 -right-4 animate-bounce" />
+                       </div>
+                       
+                       <h3 className="text-white font-black text-2xl mb-4 tracking-tight">AI กำลังสร้างภาพแผนที่อัจฉริยะ</h3>
+                       
+                       <div className="bg-white/5 p-4 rounded-3xl border border-white/10 mb-8 min-h-[80px] flex items-center justify-center">
+                          <p className="text-indigo-100/80 text-sm font-medium animate-pulse">
+                            {generationMessages[generationStep]}
+                          </p>
+                       </div>
+                       
+                       {/* Progress Bar */}
+                       <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden mb-4 border border-white/5 p-0.5">
+                          <div 
+                            className="bg-gradient-to-r from-indigo-600 to-purple-500 h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(79,70,229,0.5)]" 
+                            style={{ width: `${((generationStep + 1) / generationMessages.length) * 100}%` }}
+                          ></div>
+                       </div>
+                       <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                          <span>กำลังประมวลผล</span>
+                          <span>{Math.round(((generationStep + 1) / generationMessages.length) * 100)}%</span>
+                       </div>
                     </div>
                  </div>
-               ) : generatedMap ? (
-                 <div className="absolute inset-0 z-40 animate-in fade-in zoom-in duration-1000">
+               )}
+
+               {/* Generated Satellite Result */}
+               {generatedMap ? (
+                 <div className="absolute inset-0 z-40 animate-in fade-in zoom-in duration-1000 overflow-hidden rounded-3xl md:rounded-none">
                    <img src={generatedMap} alt="AI Generated Satellite View" className="w-full h-full object-cover" />
-                   <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold border border-white/10 flex items-center gap-2">
-                     <Camera size={12} />
-                     AI GENERATED SITE IMAGERY (4K)
+                   
+                   {/* Results UI Overlays */}
+                   <div className="absolute top-8 left-8 flex flex-col gap-3">
+                     <div className="bg-slate-900/60 backdrop-blur-xl text-white px-5 py-2.5 rounded-full text-xs font-black border border-white/20 flex items-center gap-3 shadow-2xl">
+                       <Camera size={16} className="text-indigo-400" />
+                       AI-GENERATED SITE ANALYSIS (4K UHD)
+                     </div>
+                     <div className="bg-black/40 backdrop-blur-md text-white/70 px-4 py-1.5 rounded-full text-[10px] font-bold border border-white/5">
+                       SOURCE: GEMINI IMAGEN ENGINE v2.5
+                     </div>
                    </div>
-                   <button 
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = generatedMap;
-                      link.download = `satellite-site-map-${Date.now()}.png`;
-                      link.click();
-                    }}
-                    className="absolute bottom-4 left-4 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-3 rounded-2xl border border-white/20 transition-all flex items-center gap-2 text-xs font-bold"
-                   >
-                     <Download size={16} />
-                     ดาวน์โหลดภาพ 4K
-                   </button>
-                   <button 
-                    onClick={() => setGeneratedMap(null)}
-                    className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 backdrop-blur-md text-white p-2 rounded-xl border border-white/10"
-                   >
-                     <X size={20} />
-                   </button>
+
+                   <div className="absolute bottom-8 left-8 flex items-center gap-3">
+                     <button 
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = generatedMap;
+                          link.download = `infra-satellite-${Date.now()}.png`;
+                          link.click();
+                        }}
+                        className="bg-white hover:bg-slate-100 text-slate-900 px-6 py-4 rounded-[24px] text-sm font-black transition-all flex items-center gap-3 shadow-2xl active:scale-95"
+                     >
+                       <Download size={20} />
+                       ดาวน์โหลดแผนที่ความละเอียดสูง
+                     </button>
+                     <button 
+                        onClick={() => setGeneratedMap(null)}
+                        className="bg-black/60 hover:bg-black/80 backdrop-blur-md text-white p-4 rounded-[24px] border border-white/10 transition-all shadow-2xl"
+                        title="ปิดมุมมองนี้"
+                     >
+                       <X size={20} />
+                     </button>
+                   </div>
                  </div>
                ) : null}
 
-               {/* Satellite Background Simulation */}
+               {/* Default Simulated Map Surface */}
                <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
-               
-               {/* Map Grid */}
                <div className="absolute inset-0 pointer-events-none" style={{ 
                  background: 'linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px)', 
                  backgroundSize: '40px 40px' 
                }}></div>
 
-               {/* Simulated Map Markers */}
+               {/* Interactive Markers Over Basic Surface */}
                {projects.map((p, i) => (
                  <div 
                    key={p.id} 
-                   className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-in zoom-in duration-500 cursor-pointer group"
+                   className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-in zoom-in duration-700 cursor-pointer group"
                    style={{ 
-                     top: `${20 + (i * 15)}%`, 
-                     left: `${30 + (i * 20)}%` 
+                     top: `${25 + (i * 18)}%`, 
+                     left: `${35 + (i * 15)}%` 
                    }}
                  >
                    <div className="flex flex-col items-center">
-                     <div className="mb-2 bg-white text-slate-900 px-2 py-1 rounded text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg whitespace-nowrap">
+                     <div className="mb-2 bg-white text-slate-900 px-3 py-1.5 rounded-xl text-[10px] font-black opacity-0 group-hover:opacity-100 transition-all shadow-2xl whitespace-nowrap -translate-y-2 group-hover:translate-y-0 border border-slate-200">
                        {p.name}
                      </div>
-                     <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-125 ${
-                       p.status === ProjectStatus.COMPLETED ? 'bg-green-500' : 'bg-blue-600'
+                     <div className={`w-8 h-8 rounded-[12px] border-2 border-white flex items-center justify-center shadow-xl transition-all group-hover:scale-125 group-hover:rotate-12 ${
+                       p.status === ProjectStatus.COMPLETED ? 'bg-emerald-500' : 'bg-indigo-600'
                      }`}>
-                       <Navigation size={12} className="text-white rotate-45" />
+                       <Navigation size={14} className="text-white rotate-45" />
                      </div>
                    </div>
                  </div>
                ))}
 
-               {/* Map Navigation Controls UI Overlay */}
-               <div className="absolute bottom-6 right-6 flex flex-col gap-2">
-                 <button className="w-10 h-10 bg-slate-800 text-white rounded-lg shadow-xl hover:bg-slate-700 transition-colors flex items-center justify-center border border-slate-700">+</button>
-                 <button className="w-10 h-10 bg-slate-800 text-white rounded-lg shadow-xl hover:bg-slate-700 transition-colors flex items-center justify-center border border-slate-700">-</button>
+               {/* Floating Map Controls */}
+               <div className="absolute bottom-10 right-10 flex flex-col gap-3">
+                 <button className="w-14 h-14 bg-slate-900 text-white rounded-[24px] shadow-2xl hover:bg-slate-800 transition-all flex items-center justify-center border border-white/5 font-black text-xl">+</button>
+                 <button className="w-14 h-14 bg-slate-900 text-white rounded-[24px] shadow-2xl hover:bg-slate-800 transition-all flex items-center justify-center border border-white/5 font-black text-xl">-</button>
                  <div className="h-4"></div>
-                 <button className="w-10 h-10 bg-blue-600 text-white rounded-lg shadow-xl hover:bg-blue-700 transition-colors flex items-center justify-center">
-                   <Navigation size={20} />
+                 <button className="w-14 h-14 bg-indigo-600 text-white rounded-[24px] shadow-2xl hover:bg-indigo-700 transition-all flex items-center justify-center shadow-indigo-500/30">
+                   <Navigation size={24} />
                  </button>
                </div>
 
-               {/* Scale & Coordinates Footer */}
-               <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-[10px] text-slate-500 flex gap-4 font-mono">
-                 <span>LAT: 13.7563° N</span>
-                 <span>LON: 100.5018° E</span>
-                 <span className="text-blue-500">SCALE: 1:5,000</span>
+               {/* Status Bar */}
+               <div className="absolute bottom-6 left-10 bg-slate-900/60 backdrop-blur-xl px-6 py-3 rounded-[20px] border border-white/10 text-[10px] text-slate-400 flex gap-6 font-black uppercase tracking-widest shadow-2xl">
+                 <span className="flex items-center gap-2">LAT: <span className="text-white">13.7563° N</span></span>
+                 <span className="flex items-center gap-2">LON: <span className="text-white">100.5018° E</span></span>
+                 <span className="text-indigo-400">มาตราส่วน 1:1,000</span>
                </div>
-            </div>
+            </main>
           </div>
         </div>
       )}
