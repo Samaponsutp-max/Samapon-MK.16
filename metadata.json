@@ -1,0 +1,7 @@
+{
+  "name": "InfraGuard - Infrastructure Management System",
+  "description": "A comprehensive infrastructure database and management system for local government, featuring development planning, budget tracking, construction progress, and maintenance management.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
