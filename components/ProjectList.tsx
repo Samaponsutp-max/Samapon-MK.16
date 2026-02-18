@@ -1,22 +1,26 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Project, ProjectStatus } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Project, ProjectStatus, ProjectCategory } from '../types';
 import { 
   Search, 
-  Filter, 
   Eye, 
   Sparkles, 
   Pencil, 
-  Trash2, 
-  ArrowUpDown, 
-  Calendar, 
   MapPin, 
-  Briefcase, 
-  TrendingUp,
-  MoreVertical,
   ChevronDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileSpreadsheet,
+  QrCode,
+  Clock,
+  Users,
+  AlertCircle,
+  Construction,
+  Filter,
+  Calendar,
+  X,
+  Check,
+  RotateCcw
 } from 'lucide-react';
 import { getProjectSummaryAI } from '../services/geminiService';
 
@@ -26,82 +30,48 @@ interface ProjectListProps {
   onDelete?: (id: string) => void;
 }
 
-type SortConfig = {
-  key: keyof Project | 'effectiveBudget';
-  direction: 'asc' | 'desc';
-} | null;
-
-const ITEMS_PER_PAGE = 12;
+const ITEMS_PER_PAGE = 8;
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, onEdit, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [aiInsight, setAiInsight] = useState<{id: string, text: string} | null>(null);
-  const [loadingAiId, setLoadingAiId] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'projectCode', direction: 'asc' });
-  const [isSortOpen, setIsSortOpen] = useState(false);
-  
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Advanced Filtering State
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [dateStart, setDateStart] = useState<string>('');
+  const [dateEnd, setDateEnd] = useState<string>('');
+  
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [loadingAiId, setLoadingAiId] = useState<string | null>(null);
+  const [aiInsight, setAiInsight] = useState<{ id: string, text: string } | null>(null);
 
-  const handleSort = (key: keyof Project | 'effectiveBudget') => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-    setIsSortOpen(false);
-  };
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           p.projectCode.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(p.status);
+      const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(p.category);
+      
+      // Date Range Filter (against contract end date)
+      let matchesDate = true;
+      if (dateStart || dateEnd) {
+        const pDate = new Date(p.contractDateEnd);
+        if (dateStart && pDate < new Date(dateStart)) matchesDate = false;
+        if (dateEnd && pDate > new Date(dateEnd)) matchesDate = false;
+      }
 
-  const filteredAndSortedProjects = useMemo(() => {
-    let result = projects.filter(p => 
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      p.projectCode.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+      return matchesSearch && matchesStatus && matchesCategory && matchesDate;
+    });
+  }, [projects, searchTerm, selectedStatuses, selectedCategories, dateStart, dateEnd]);
 
-    if (sortConfig) {
-      result.sort((a, b) => {
-        let aValue: any;
-        let bValue: any;
-
-        if (sortConfig.key === 'effectiveBudget') {
-          aValue = a.budgetActual || a.budgetEstimated;
-          bValue = b.budgetActual || b.budgetEstimated;
-        } else {
-          aValue = a[sortConfig.key as keyof Project];
-          bValue = b[sortConfig.key as keyof Project];
-        }
-
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return result;
-  }, [projects, searchTerm, sortConfig]);
-
-  // Reset pagination when search or sort changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, sortConfig]);
-
-  // Pagination Calculations
-  const totalPages = Math.ceil(filteredAndSortedProjects.length / ITEMS_PER_PAGE);
   const paginatedProjects = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredAndSortedProjects.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredAndSortedProjects, currentPage]);
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredProjects.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredProjects, currentPage]);
 
-  const getStatusStyles = (status: ProjectStatus) => {
-    switch (status) {
-      case ProjectStatus.COMPLETED: return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case ProjectStatus.IN_PROGRESS: return 'bg-blue-100 text-blue-700 border-blue-200';
-      case ProjectStatus.DELAYED: return 'bg-rose-100 text-rose-700 border-rose-200';
-      case ProjectStatus.PLANNING: return 'bg-amber-100 text-amber-700 border-amber-200';
-      case ProjectStatus.NOT_STARTED: return 'bg-slate-100 text-slate-700 border-slate-200';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
-  };
+  const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
 
   const handleAiAnalysis = async (project: Project) => {
     setLoadingAiId(project.id);
@@ -110,240 +80,385 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, onEdit, onDelete })
     setLoadingAiId(null);
   };
 
+  const toggleStatus = (status: string) => {
+    setSelectedStatuses(prev => 
+      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+    );
+    setCurrentPage(1);
+  };
+
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+    setCurrentPage(1);
+  };
+
+  const resetFilters = () => {
+    setSelectedStatuses([]);
+    setSelectedCategories([]);
+    setDateStart('');
+    setDateEnd('');
+    setSearchTerm('');
+    setCurrentPage(1);
+  };
+
+  const getStatusColor = (status: ProjectStatus) => {
+    switch (status) {
+      case ProjectStatus.COMPLETED: return 'bg-emerald-500';
+      case ProjectStatus.IN_PROGRESS: return 'bg-blue-500';
+      case ProjectStatus.DELAYED: return 'bg-rose-500';
+      case ProjectStatus.PLANNING: return 'bg-amber-500';
+      default: return 'bg-slate-500';
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Search and Sort Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="ค้นหาโครงการโดยชื่อหรือรหัส..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm outline-none"
-          />
+    <div className="flex flex-col gap-6 pb-10">
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <h2 className="text-4xl font-black text-[#002d62] tracking-tighter uppercase">Construction Registry</h2>
+          <p className="text-slate-500 font-medium">ทะเบียนโครงการและตรวจติดตามงานก่อสร้างรายพื้นที่</p>
         </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-none">
-            <button 
-              onClick={() => setIsSortOpen(!isSortOpen)}
-              className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-white border border-slate-200 rounded-2xl text-slate-700 hover:bg-slate-50 transition-colors text-sm shadow-sm"
-            >
-              <div className="flex items-center gap-2">
-                <ArrowUpDown size={16} className="text-slate-400" />
-                <span>เรียงตาม: {sortConfig?.key === 'effectiveBudget' ? 'งบประมาณ' : 'รหัสโครงการ'}</span>
-              </div>
-              <ChevronDown size={16} className={`transition-transform ${isSortOpen ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {isSortOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 py-2 animate-in fade-in zoom-in-95 duration-150">
-                <button onClick={() => handleSort('projectCode')} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 text-slate-700">รหัสโครงการ</button>
-                <button onClick={() => handleSort('effectiveBudget')} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 text-slate-700">งบประมาณ</button>
-                <button onClick={() => handleSort('progressPercent')} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 text-slate-700">ความคืบหน้า</button>
-                <button onClick={() => handleSort('fiscalYear')} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 text-slate-700">ปีงบประมาณ</button>
-              </div>
-            )}
-          </div>
-
-          <button className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
-            <Filter size={20} />
+        <div className="flex gap-3">
+          <button className="flex items-center gap-2 bg-white border border-slate-200 px-6 py-3 rounded-2xl text-xs font-black text-slate-700 shadow-sm hover:bg-slate-50 transition-all">
+            <FileSpreadsheet size={18} /> Excel Export
           </button>
         </div>
       </div>
 
-      {/* Grid of Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {paginatedProjects.map((project) => (
-          <div key={project.id} className="group bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 flex flex-col">
-            {/* Card Header */}
-            <div className="p-6 pb-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-wider">
-                  {project.projectCode}
+      {/* Advanced Filtering System */}
+      <div className="bg-white rounded-[40px] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 flex flex-col md:flex-row gap-4 items-center border-b border-slate-50">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <input 
+              type="text" 
+              placeholder="ค้นหาชื่อโครงการ หรือรหัส..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-[24px] outline-none focus:ring-2 focus:ring-[#002d62]/10 font-bold text-sm text-slate-800 transition-all"
+            />
+          </div>
+          <div className="flex gap-3 w-full md:w-auto">
+            <button 
+              onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+              className={`flex items-center gap-2 px-6 py-4 rounded-[20px] text-xs font-black transition-all border ${
+                isFilterExpanded || selectedStatuses.length > 0 || selectedCategories.length > 0 
+                ? 'bg-[#002d62] text-white border-[#002d62]' 
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Filter size={18} />
+              ตัวกรองขั้นสูง
+              {(selectedStatuses.length > 0 || selectedCategories.length > 0) && (
+                <span className="bg-white text-[#002d62] w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
+                  {selectedStatuses.length + selectedCategories.length}
                 </span>
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${getStatusStyles(project.status)}`}>
-                  {project.status}
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 leading-tight mb-2 group-hover:text-blue-600 transition-colors">
-                {project.name}
-              </h3>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-slate-500 text-xs">
-                  <Briefcase size={14} />
-                  <span>{project.category}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-500 text-xs">
-                  <MapPin size={14} />
-                  <span>{project.area}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Section */}
-            <div className="px-6 py-4 bg-slate-50/50 border-y border-slate-100">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <TrendingUp size={14} className="text-blue-500" />
-                  <span>ความคืบหน้า</span>
-                </div>
-                <span className="text-xs font-bold text-blue-600">{project.progressPercent}%</span>
-              </div>
-              <div className="w-full bg-slate-200 rounded-full h-1.5">
-                <div 
-                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-1000" 
-                  style={{ width: `${project.progressPercent}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Financial & Metadata */}
-            <div className="p-6 pt-4 flex-1 flex flex-col justify-between">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">งบประมาณ</p>
-                  <p className="text-sm font-bold text-slate-900">
-                    ฿{(project.budgetActual || project.budgetEstimated).toLocaleString()}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">ปีงบประมาณ</p>
-                  <p className="text-sm font-bold text-slate-900">{project.fiscalYear}</p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={() => handleAiAnalysis(project)}
-                    className={`p-2 rounded-xl transition-all ${loadingAiId === project.id ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
-                    disabled={loadingAiId === project.id}
-                  >
-                    <Sparkles size={20} className={loadingAiId === project.id ? 'animate-pulse' : ''} />
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-                    <Eye size={20} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={() => onEdit?.(project)}
-                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                  >
-                    <Pencil size={20} />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบโครงการนี้?')) {
-                        onDelete?.(project.id);
-                      }
-                    }}
-                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Insight Overlay/Drawer inside card area */}
-            {aiInsight?.id === project.id && (
-              <div className="p-5 bg-indigo-50 border-t border-indigo-100 animate-in slide-in-from-bottom duration-300">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles size={16} className="text-indigo-600" />
-                  <span className="text-xs font-bold text-indigo-900 uppercase">AI Strategy Insight</span>
-                </div>
-                <p className="text-xs text-indigo-800 leading-relaxed italic">"{aiInsight.text}"</p>
-                <button 
-                  onClick={() => setAiInsight(null)}
-                  className="text-[10px] text-indigo-400 font-bold hover:text-indigo-600 mt-3 flex items-center gap-1"
-                >
-                  <XIcon size={12} /> ปิดความเห็น AI
-                </button>
-              </div>
+              )}
+              <ChevronDown size={16} className={`transition-transform duration-300 ${isFilterExpanded ? 'rotate-180' : ''}`} />
+            </button>
+            {(selectedStatuses.length > 0 || selectedCategories.length > 0 || dateStart || dateEnd || searchTerm) && (
+              <button 
+                onClick={resetFilters}
+                className="p-4 bg-slate-100 text-slate-500 rounded-[20px] hover:bg-rose-50 hover:text-rose-600 transition-all border border-transparent"
+                title="ล้างตัวกรองทั้งหมด"
+              >
+                <RotateCcw size={20} />
+              </button>
             )}
+          </div>
+        </div>
+
+        {/* Expandable Filter Panel */}
+        <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isFilterExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="p-8 bg-slate-50/50 grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Multi-select Status */}
+            <div>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Check size={14} className="text-[#002d62]" /> สถานะโครงการ
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {Object.values(ProjectStatus).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => toggleStatus(s)}
+                    className={`px-4 py-2.5 rounded-xl text-[11px] font-black transition-all border ${
+                      selectedStatuses.includes(s)
+                        ? 'bg-[#002d62] text-white border-[#002d62] shadow-lg'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Multi-select Category */}
+            <div>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Construction size={14} className="text-[#002d62]" /> ประเภทงาน
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {Object.values(ProjectCategory).map(c => (
+                  <button
+                    key={c}
+                    onClick={() => toggleCategory(c)}
+                    className={`px-4 py-2.5 rounded-xl text-[11px] font-black transition-all border ${
+                      selectedCategories.includes(c)
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date Range Picker */}
+            <div>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Calendar size={14} className="text-[#002d62]" /> วันที่สิ้นสุดสัญญา (Range)
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input 
+                    type="date" 
+                    value={dateStart}
+                    onChange={(e) => setDateStart(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+                <div className="text-slate-300 font-black">—</div>
+                <div className="relative flex-1">
+                  <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input 
+                    type="date" 
+                    value={dateEnd}
+                    onChange={(e) => setDateEnd(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+              </div>
+              <p className="text-[9px] text-slate-400 mt-3 font-medium italic">กรองตามกำหนดแล้วเสร็จตามสัญญา</p>
+            </div>
+          </div>
+          <div className="px-8 py-4 bg-slate-100/50 flex justify-end">
+             <button 
+               onClick={() => setIsFilterExpanded(false)}
+               className="text-[11px] font-black text-slate-500 uppercase hover:text-[#002d62] transition-colors"
+             >
+               ซ่อนแผงควบคุม
+             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Chips Area */}
+      {(selectedStatuses.length > 0 || selectedCategories.length > 0) && (
+        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+          {selectedStatuses.map(s => (
+            <div key={s} className="flex items-center gap-2 bg-[#002d62]/5 border border-[#002d62]/10 px-4 py-1.5 rounded-full">
+              <span className="text-[10px] font-black text-[#002d62] uppercase tracking-widest">{s}</span>
+              <button onClick={() => toggleStatus(s)} className="text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
+            </div>
+          ))}
+          {selectedCategories.map(c => (
+            <div key={c} className="flex items-center gap-2 bg-blue-50 border border-blue-100 px-4 py-1.5 rounded-full">
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{c}</span>
+              <button onClick={() => toggleCategory(c)} className="text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Results Count */}
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Showing:</span>
+        <span className="bg-[#002d62] text-white px-3 py-1 rounded-lg text-xs font-black">{filteredProjects.length} Projects</span>
+      </div>
+
+      {/* Project Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {paginatedProjects.map((project) => (
+          <div key={project.id} className="bg-white rounded-[48px] border border-slate-200 shadow-sm overflow-hidden flex flex-col group hover:shadow-2xl transition-all duration-500">
+            {/* Top Preview Section */}
+            <div className="h-56 flex bg-slate-100 relative">
+               <div className="w-1/2 h-full border-r border-white/20 relative group/photo overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1541888946425-d81bb19480c5?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover grayscale transition-all group-hover/photo:grayscale-0 group-hover/photo:scale-110" />
+                  <div className="absolute top-4 left-4 bg-black/40 backdrop-blur px-3 py-1 rounded-lg">
+                    <span className="text-[9px] font-black text-white uppercase tracking-widest">Before</span>
+                  </div>
+               </div>
+               <div className="w-1/2 h-full relative group/photo overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1541888946425-d81bb19480c5?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover transition-all group-hover/photo:scale-110" />
+                  <div className="absolute top-4 right-4 bg-[#002d62] px-3 py-1 rounded-lg">
+                    <span className="text-[9px] font-black text-white uppercase tracking-widest">In-Progress</span>
+                  </div>
+               </div>
+               <div className="absolute inset-0 pointer-events-none border-[12px] border-white rounded-[48px] z-10 m-1"></div>
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                  <button className="bg-white text-[#002d62] p-4 rounded-full shadow-2xl hover:scale-110 transition-transform border-4 border-slate-100">
+                    <QrCode size={24} />
+                  </button>
+               </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="p-10 flex flex-col flex-1">
+              <div className="flex items-center justify-between mb-4">
+                 <div className="flex items-center gap-3">
+                   <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{project.projectCode}</span>
+                   <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
+                   <span className="text-[10px] font-bold text-slate-400">FY {project.fiscalYear}</span>
+                 </div>
+                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-xl ${getStatusColor(project.status)}`}>
+                   {project.status}
+                 </div>
+              </div>
+
+              <h3 className="text-2xl font-black text-slate-900 leading-tight mb-8 tracking-tight group-hover:text-blue-700 transition-colors">{project.name}</h3>
+              
+              <div className="grid grid-cols-2 gap-6 mb-8">
+                 <div className="space-y-4">
+                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+                       <MapPin size={16} className="text-slate-300" />
+                       <span className="truncate">{project.area}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+                       <Users size={16} className="text-slate-300" />
+                       <span className="truncate">{project.contractor}</span>
+                    </div>
+                 </div>
+                 <div className="space-y-4">
+                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+                       <Clock size={16} className="text-slate-300" />
+                       <span>Ends: {project.contractDateEnd}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+                       <Construction size={16} className="text-slate-300" />
+                       <span>Progress: {project.progressPercent}%</span>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="mt-auto">
+                 <div className="bg-slate-50 rounded-[32px] p-6 border border-slate-100 mb-8">
+                    <div className="flex justify-between items-center mb-3">
+                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Construction Progress</span>
+                       <span className="text-sm font-black text-blue-600">{project.progressPercent}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                       <div 
+                        className="bg-blue-600 h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(37,99,235,0.4)]" 
+                        style={{ width: `${project.progressPercent}%` }}
+                       />
+                    </div>
+                    <div className="mt-6 flex justify-between items-end">
+                       <div>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Spent Budget (Actual)</p>
+                          <p className="text-xl font-black text-[#002d62]">฿{(project.budgetActual || 0).toLocaleString()}</p>
+                       </div>
+                       {project.problems !== '-' && (
+                         <div className="flex items-center gap-2 text-rose-500 bg-rose-50 px-3 py-1 rounded-lg border border-rose-100 animate-pulse">
+                            <AlertCircle size={14} />
+                            <span className="text-[10px] font-black uppercase tracking-tighter">Issues Reported</span>
+                         </div>
+                       )}
+                    </div>
+                 </div>
+
+                 <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleAiAnalysis(project)}
+                      className="flex-1 bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                    >
+                      <Sparkles size={16} className={loadingAiId === project.id ? 'animate-pulse' : ''} />
+                      AI Tracking
+                    </button>
+                    <button 
+                      onClick={() => onEdit?.(project)}
+                      className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 hover:bg-black transition-all shadow-xl"
+                    >
+                      <Pencil size={16} />
+                      Update Status
+                    </button>
+                    <button className="p-4 border border-slate-200 rounded-2xl text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all">
+                      <Eye size={20} />
+                    </button>
+                 </div>
+              </div>
+
+              {/* AI Insight Box */}
+              {aiInsight?.id === project.id && (
+                <div className="mt-6 p-6 bg-[#001f3f] text-white rounded-[32px] animate-in slide-in-from-bottom-5 duration-500">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="text-amber-400" size={16} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Construction Intelligence</span>
+                  </div>
+                  <p className="text-sm italic leading-relaxed text-blue-50">"{aiInsight.text}"</p>
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-slate-200">
-          <p className="text-sm text-slate-500 font-medium">
-            แสดง {Math.min(filteredAndSortedProjects.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} ถึง {Math.min(filteredAndSortedProjects.length, currentPage * ITEMS_PER_PAGE)} จากทั้งหมด {filteredAndSortedProjects.length} โครงการ
-          </p>
-          
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                // Logic to show limited page numbers if there are too many
-                if (
-                  page === 1 || 
-                  page === totalPages || 
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`min-w-[40px] h-10 rounded-xl text-sm font-bold transition-all ${
-                        currentPage === page 
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
-                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                } else if (
-                  (page === 2 && currentPage > 3) || 
-                  (page === totalPages - 1 && currentPage < totalPages - 2)
-                ) {
-                  return <span key={page} className="px-1 text-slate-400">...</span>;
-                }
-                return null;
-              })}
-            </div>
-            
-            <button 
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
+      {/* Empty State */}
+      {filteredProjects.length === 0 && (
+        <div className="p-20 text-center bg-white rounded-[40px] border border-slate-100 shadow-sm">
+           <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Search size={32} className="text-slate-200" />
+           </div>
+           <h3 className="text-xl font-black text-slate-900">ไม่พบข้อมูลที่ค้นหา</h3>
+           <p className="text-slate-400 font-medium mt-2">ลองเปลี่ยนตัวกรองหรือคำค้นหาใหม่</p>
+           <button 
+             onClick={resetFilters}
+             className="mt-6 px-8 py-3 bg-[#002d62] text-white rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all"
+           >
+             ล้างตัวกรองทั้งหมด
+           </button>
         </div>
       )}
 
-      {filteredAndSortedProjects.length === 0 && (
-        <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-20 text-center">
-          <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search size={32} className="text-slate-300" />
-          </div>
-          <h3 className="text-lg font-bold text-slate-800">ไม่พบโครงการที่คุณต้องการ</h3>
-          <p className="text-slate-500">ลองเปลี่ยนคำค้นหาหรือตัวกรองใหม่อีกครั้ง</p>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-10">
+           <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            className="p-4 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-[#002d62] hover:border-[#002d62]/20 transition-all shadow-sm"
+           >
+            <ChevronLeft />
+           </button>
+           <div className="flex gap-2">
+             {[...Array(totalPages)].map((_, i) => (
+               <button
+                 key={i}
+                 onClick={() => setCurrentPage(i + 1)}
+                 className={`w-12 h-12 rounded-2xl text-sm font-black transition-all ${
+                   currentPage === i + 1 
+                   ? 'bg-[#002d62] text-white shadow-xl' 
+                   : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
+                 }`}
+               >
+                 {i + 1}
+               </button>
+             ))}
+           </div>
+           <button 
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            className="p-4 rounded-2xl bg-white border border-slate-200 text-slate-400 hover:text-[#002d62] hover:border-[#002d62]/20 transition-all shadow-sm"
+           >
+            <ChevronRight />
+           </button>
         </div>
       )}
     </div>
   );
 };
-
-// Simple X icon replacement since it wasn't imported from lucide-react in current scope
-const XIcon = ({size}: {size: number}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-);
 
 export default ProjectList;

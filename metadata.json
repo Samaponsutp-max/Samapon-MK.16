@@ -1,7 +1,8 @@
 {
-  "name": "InfraGuard - Infrastructure Management System",
-  "description": "A comprehensive infrastructure database and management system for local government, featuring development planning, budget tracking, construction progress, and maintenance management.",
+  "name": "InfraGuard - ระบบบริหารจัดการโครงสร้างพื้นฐานดิจิทัล",
+  "description": "ระบบฐานข้อมูลและบริหารจัดการโครงสร้างพื้นฐานเชิงบูรณาการสำหรับหน่วยงานส่วนท้องถิ่น รองรับการวางแผนพัฒนา การติดตามงบประมาณ และการวิเคราะห์สินทรัพย์อัจฉริยะ",
   "requestFramePermissions": [
-    "geolocation"
+    "geolocation",
+    "camera"
   ]
 }

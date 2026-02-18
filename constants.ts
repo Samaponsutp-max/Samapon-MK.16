@@ -101,7 +101,7 @@ export const MOCK_ASSETS: Asset[] = [
     lastChecked: '2024-01-15',
     condition: AssetCondition.FAIR,
     maintenanceBudget: 150000,
-    history: ['ซ่อมผิวทาง 2563', 'ล้างท่อข้างทาง 2565']
+    maintenanceHistory: ['ซ่อมผิวทาง 2563', 'ล้างท่อข้างทาง 2565']
   },
   {
     id: 'AST-2555-BLD-04',
@@ -111,7 +111,7 @@ export const MOCK_ASSETS: Asset[] = [
     lastChecked: '2024-03-20',
     condition: AssetCondition.POOR,
     maintenanceBudget: 850000,
-    history: ['ทาสีใหม่ 2560', 'ซ่อมระบบไฟ 2564']
+    maintenanceHistory: ['ทาสีใหม่ 2560', 'ซ่อมระบบไฟ 2564']
   },
   {
     id: 'AST-2565-WAT-12',
@@ -121,7 +121,7 @@ export const MOCK_ASSETS: Asset[] = [
     lastChecked: '2024-05-10',
     condition: AssetCondition.GOOD,
     maintenanceBudget: 25000,
-    history: ['ติดตั้งมิเตอร์อัจฉริยะ 2566']
+    maintenanceHistory: ['ติดตั้งมิเตอร์อัจฉริยะ 2566']
   },
   {
     id: 'AST-2562-ELE-09',
@@ -131,7 +131,7 @@ export const MOCK_ASSETS: Asset[] = [
     lastChecked: '2024-02-28',
     condition: AssetCondition.GOOD,
     maintenanceBudget: 120000,
-    history: ['เปลี่ยนหลอด LED ทั้งสาย 2564']
+    maintenanceHistory: ['เปลี่ยนหลอด LED ทั้งสาย 2564']
   },
   {
     id: 'AST-2558-DRN-02',
@@ -141,7 +141,7 @@ export const MOCK_ASSETS: Asset[] = [
     lastChecked: '2024-04-12',
     condition: AssetCondition.FAIR,
     maintenanceBudget: 420000,
-    history: ['ขุดลอกตะกอน 2562', 'ขุดลอกตะกอน 2566']
+    maintenanceHistory: ['ขุดลอกตะกอน 2562', 'ขุดลอกตะกอน 2566']
   }
 ];
 

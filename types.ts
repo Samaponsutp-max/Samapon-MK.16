@@ -35,6 +35,13 @@ export enum AssetCondition {
   POOR = 'ชำรุด'
 }
 
+export interface MaintenanceLog {
+  id: string;
+  date: string;
+  description: string;
+  cost: number;
+}
+
 export interface Project {
   id: string;
   projectCode: string;
@@ -57,6 +64,15 @@ export interface Project {
   engineer: string;
   description: string;
   problems: string;
+  photos?: {
+    before?: string;
+    after?: string;
+  };
+  citizenFeedback?: {
+    count: number;
+    lastReport?: string;
+  };
+  maintenanceLogs?: MaintenanceLog[];
 }
 
 export interface DevelopmentPlan {
@@ -81,14 +97,15 @@ export interface Asset {
   lastChecked: string;
   condition: AssetCondition;
   maintenanceBudget: number;
-  history: string[];
+  maintenanceHistory: string[];
 }
 
 export enum UserRole {
   ADMIN = 'Admin',
   ENGINEER = 'กองช่าง',
   EXECUTIVE = 'ผู้บริหาร',
-  FINANCE = 'เจ้าหน้าที่การเงิน'
+  FINANCE = 'เจ้าหน้าที่การเงิน',
+  CITIZEN = 'ประชาชน'
 }
 
 export interface UserAccount {
