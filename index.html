@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" class="font-medium">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,35 +15,72 @@
             --gov-teal: #0ea5e9;
             --gov-light-bg: #f8fafc;
         }
+
+        /* Font Size Scaling - Apply to HTML for REM consistency */
+        html.font-small { font-size: 14px; }
+        html.font-medium { font-size: 16px; }
+        html.font-large { font-size: 18px; }
+
+        /* Dark Mode support */
+        body.dark {
+            background-color: #0f172a !important;
+            color: #f1f5f9 !important;
+        }
+        body.dark .bg-white {
+            background-color: #1e293b !important;
+            color: #f1f5f9 !important;
+            border-color: #334155 !important;
+        }
+        body.dark .bg-slate-50, body.dark .bg-slate-50\/50 {
+            background-color: #0f172a !important;
+        }
+        body.dark .text-slate-900, body.dark .text-[#002d62] {
+            color: #f8fafc !important;
+        }
+        body.dark .text-slate-500, body.dark .text-slate-400 {
+            color: #94a3b8 !important;
+        }
+        body.dark .border-slate-100, body.dark .border-slate-200 {
+            border-color: #334155 !important;
+        }
+
+        /* Compact Mode Support */
+        body.compact-view td, body.compact-view th {
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+        }
+        body.compact-view .p-10 { padding: 1.5rem !important; }
+        body.compact-view .p-8 { padding: 1rem !important; }
+        body.compact-view .space-y-8 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
+
         body {
             font-family: 'Sarabun', sans-serif;
             background-color: var(--gov-light-bg);
             color: #1e293b;
+            transition: background-color 0.3s ease, color 0.3s ease, font-size 0.2s ease;
+            overflow-x: hidden;
         }
+        
         .executive-shadow {
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
         }
         .navy-gradient {
             background: linear-gradient(135deg, var(--gov-navy) 0%, var(--gov-navy-dark) 100%);
         }
-        ::-webkit-scrollbar {
-            width: 6px;
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        @media print {
+            @page { size: landscape; margin: 1cm; }
+            body { background-color: white !important; font-size: 12pt !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            main { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
+            nav, footer, aside { display: none !important; }
         }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
+        .print-only { display: none; }
     </style>
 <script type="importmap">
 {

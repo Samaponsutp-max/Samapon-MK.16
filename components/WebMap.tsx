@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Project, ProjectStatus } from '../types';
 import { 
   Layers, 
@@ -19,7 +19,8 @@ import {
   MapPin,
   Maximize2,
   Search,
-  ArrowRight
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
 import { queryMapsGroundingAI } from '../services/geminiService';
 
@@ -28,8 +29,10 @@ interface WebMapProps {
 }
 
 const STORAGE_KEY = 'infraguard_map_view_state';
+const SYNC_INTERVAL = 10000; // 10 seconds
 
-const WebMap: React.FC<WebMapProps> = ({ projects }) => {
+const WebMap: React.FC<WebMapProps> = ({ projects: initialProjects }) => {
+  // Persistence for Map View
   const [layers, setLayers] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved).layers : { boundary: true, projects: true, satellite: true };
@@ -40,6 +43,11 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
     return saved ? JSON.parse(saved).view : { lat: 16.0706822, lng: 103.6590449, zoom: 956 };
   });
 
+  // Real-time State
+  const [liveProjects, setLiveProjects] = useState<Project[]>(initialProjects);
+  const [lastSync, setLastSync] = useState<string>(new Date().toLocaleTimeString('th-TH'));
+  const [isSyncing, setIsSyncing] = useState(false);
+  
   const [isRadialOpen, setIsRadialOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'ALL'>('ALL');
@@ -47,18 +55,50 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Persist view state
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ layers, view }));
   }, [layers, view]);
 
+  // Synchronize with external prop updates (e.g. from ProjectForm)
+  useEffect(() => {
+    setLiveProjects(initialProjects);
+  }, [initialProjects]);
+
+  // Periodic Refresh Mechanism (Simulating API Fetch)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncProjectData();
+    }, SYNC_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const syncProjectData = () => {
+    setIsSyncing(true);
+    
+    // In a real app, this would be: const updated = await fetchProjects();
+    // For this simulation, we pull from localStorage which might have been updated by other components
+    setTimeout(() => {
+      const saved = localStorage.getItem('infra_projects');
+      if (saved) {
+        const updatedProjects = JSON.parse(saved);
+        setLiveProjects(updatedProjects);
+      }
+      setLastSync(new Date().toLocaleTimeString('th-TH'));
+      setIsSyncing(false);
+    }, 800);
+  };
+
   const filteredProjects = useMemo(() => {
-    if (statusFilter === 'ALL') return projects;
-    return projects.filter(p => p.status === statusFilter);
-  }, [projects, statusFilter]);
+    if (statusFilter === 'ALL') return liveProjects;
+    return liveProjects.filter(p => p.status === statusFilter);
+  }, [liveProjects, statusFilter]);
 
   const handleZoom = (factor: number) => setView((v: any) => ({ ...v, zoom: v.zoom * factor }));
   const resetHome = () => setView({ lat: 16.0706822, lng: 103.6590449, zoom: 956 });
 
+  // Map projection logic (Simulation)
   const projectToPx = (lat: number, lng: number) => {
     const dLat = lat - view.lat;
     const dLng = lng - view.lng;
@@ -105,10 +145,20 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
     }},
   ];
 
+  const getMarkerColor = (status: ProjectStatus) => {
+    switch (status) {
+      case ProjectStatus.COMPLETED: return 'bg-emerald-500';
+      case ProjectStatus.IN_PROGRESS: return 'bg-blue-600';
+      case ProjectStatus.DELAYED: return 'bg-rose-500';
+      case ProjectStatus.PLANNING: return 'bg-amber-500';
+      default: return 'bg-slate-500';
+    }
+  };
+
   return (
     <div className="relative w-full h-[calc(100vh-160px)] rounded-[56px] overflow-hidden shadow-2xl bg-slate-200 border border-slate-200 font-['Sarabun']">
       
-      {/* Background Map */}
+      {/* Background Map Overlay */}
       <div className="absolute inset-0 z-0">
         <iframe src={mapUrl} width="100%" height="100%" className="w-full h-full grayscale-[0.1]" style={{ border: 0 }}></iframe>
       </div>
@@ -138,16 +188,25 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
         </form>
       </div>
 
-      {/* Floating HUD: Info Display */}
+      {/* HUD: Info & Sync Status Display */}
       <div className="absolute top-10 left-10 z-10 pointer-events-none">
         <div className="bg-white/90 backdrop-blur-2xl p-8 rounded-[40px] border border-white shadow-2xl pointer-events-auto max-w-sm">
-           <div className="flex items-center gap-4 mb-6">
-              <div className="bg-[#002d62] p-3 rounded-2xl text-white shadow-lg"><Activity size={24} /></div>
-              <div>
-                 <h2 className="text-xl font-black text-[#002d62]">GIS Live Feed</h2>
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Territorial Tracking Active</p>
+           <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                 <div className="bg-[#002d62] p-3 rounded-2xl text-white shadow-lg"><Activity size={24} /></div>
+                 <div>
+                    <h2 className="text-xl font-black text-[#002d62]">GIS Live Feed</h2>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Territorial Tracking Active</p>
+                 </div>
               </div>
+              {isSyncing && (
+                <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 text-blue-600 rounded-lg animate-pulse">
+                  <RefreshCw size={12} className="animate-spin" />
+                  <span className="text-[9px] font-black uppercase">Syncing</span>
+                </div>
+              )}
            </div>
+
            <div className="space-y-3 mb-6">
               <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
                 <span className="text-[10px] font-black text-slate-400">LATITUDE</span>
@@ -157,7 +216,12 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
                 <span className="text-[10px] font-black text-slate-400">LONGITUDE</span>
                 <span className="text-xs font-mono font-bold">{view.lng.toFixed(6)}</span>
               </div>
+              <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <span className="text-[10px] font-black text-slate-400">LAST SYNC</span>
+                <span className="text-xs font-mono font-bold">{lastSync}</span>
+              </div>
            </div>
+
            <div className="flex items-center justify-between border-t border-slate-100 pt-6">
               <div className="flex flex-col">
                 <span className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">View Focus</span>
@@ -168,17 +232,41 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
         </div>
       </div>
 
-      {/* Project Markers */}
-      {layers.projects && filteredProjects.map((p) => {
-        const mockLat = p.id === '1' ? view.lat + 0.0005 : view.lat - 0.0008;
-        const mockLng = p.id === '1' ? view.lng + 0.0010 : view.lng - 0.0005;
-        const pos = projectToPx(mockLat, mockLng);
+      {/* Dynamic Project Markers */}
+      {layers.projects && filteredProjects.map((p, idx) => {
+        // Mock coordinates for demo if not strictly accurate, or use real lat/lng
+        // We use slightly offset positions from focus for visual spread in demo
+        const demoOffsetLat = (idx * 0.0003) - 0.0005;
+        const demoOffsetLng = (idx * 0.0002) - 0.0004;
+        const pos = projectToPx(p.lat + demoOffsetLat, p.lng + demoOffsetLng);
+        
         if (pos.top < -5 || pos.top > 105 || pos.left < -5 || pos.left > 105) return null;
+        
         return (
-          <div key={p.id} className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group" style={{ top: `${pos.top}%`, left: `${pos.left}%` }} onClick={() => setSelectedProject(p)}>
-            <div className="bg-slate-900/90 backdrop-blur px-3 py-1 rounded-lg text-white text-[10px] font-bold shadow-2xl mb-2 opacity-0 group-hover:opacity-100 transition-all -translate-y-2 group-hover:translate-y-0 whitespace-nowrap border border-white/20">{p.name}</div>
-            <div className={`w-8 h-8 rounded-full border-4 border-white shadow-2xl flex items-center justify-center transition-all group-hover:scale-125 ${p.status === ProjectStatus.COMPLETED ? 'bg-emerald-500' : 'bg-blue-600'}`}>
+          <div 
+            key={p.id} 
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group animate-in zoom-in-50 duration-500" 
+            style={{ 
+              top: `${pos.top}%`, 
+              left: `${pos.left}%`,
+              transition: 'all 0.7s cubic-bezier(0.4, 0, 0.2, 1)' 
+            }} 
+            onClick={() => setSelectedProject(p)}
+          >
+            {/* Project Label on Hover */}
+            <div className="bg-slate-900/90 backdrop-blur px-3 py-1 rounded-lg text-white text-[10px] font-bold shadow-2xl mb-2 opacity-0 group-hover:opacity-100 transition-all -translate-y-2 group-hover:translate-y-0 whitespace-nowrap border border-white/20 relative z-30">
+              {p.name}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900"></div>
+            </div>
+
+            {/* Marker Circle */}
+            <div className={`relative w-8 h-8 rounded-full border-4 border-white shadow-2xl flex items-center justify-center transition-all group-hover:scale-125 ${getMarkerColor(p.status)}`}>
               <Navigation size={14} className="text-white rotate-45" />
+              
+              {/* Pulse effect for specific statuses or during sync */}
+              {(p.status === ProjectStatus.IN_PROGRESS || isSyncing) && (
+                <div className={`absolute inset-0 rounded-full animate-ping opacity-30 ${getMarkerColor(p.status)}`}></div>
+              )}
             </div>
           </div>
         );
@@ -209,14 +297,16 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
         <button onClick={() => handleZoom(2.0)} className="w-14 h-14 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl flex items-center justify-center text-[#002d62] hover:bg-blue-600 hover:text-white transition-all border border-white"><ZoomOut size={24} /></button>
       </div>
 
-      {/* Modals: AI Analysis & Project Detail */}
+      {/* Selected Project Card Modal */}
       {selectedProject && (
         <div className="absolute bottom-12 left-12 z-50 w-full max-w-sm animate-in slide-in-from-left-20 duration-500">
            <div className="bg-white rounded-[40px] shadow-2xl border border-white overflow-hidden flex flex-col">
               <div className="h-44 bg-slate-900 relative">
                  <img src="https://images.unsplash.com/photo-1541888946425-d81bb19480c5?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover opacity-60" />
-                 <button onClick={() => setSelectedProject(null)} className="absolute top-4 right-4 bg-white/20 p-2 rounded-full text-white backdrop-blur border border-white/20"><X size={20} /></button>
-                 <div className="absolute bottom-4 left-6 px-3 py-1 bg-blue-600 text-white text-[10px] font-black rounded-lg uppercase tracking-widest">{selectedProject.status}</div>
+                 <button onClick={() => setSelectedProject(null)} className="absolute top-4 right-4 bg-white/20 p-2 rounded-full text-white backdrop-blur border border-white/20 hover:bg-white/40 transition-colors"><X size={20} /></button>
+                 <div className={`absolute bottom-4 left-6 px-3 py-1 text-white text-[10px] font-black rounded-lg uppercase tracking-widest ${getMarkerColor(selectedProject.status)}`}>
+                   {selectedProject.status}
+                 </div>
               </div>
               <div className="p-8">
                  <p className="text-[10px] font-black text-blue-600 uppercase mb-1 tracking-widest">{selectedProject.projectCode}</p>
@@ -231,12 +321,15 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
                        <p className="text-[9px] text-blue-400 font-black uppercase mb-1">Completion</p>
                     </div>
                  </div>
-                 <button className="w-full py-4 bg-[#002d62] text-white rounded-[20px] font-black text-xs flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-transform"><Activity size={16} /> Open Full Audit Log</button>
+                 <button className="w-full py-4 bg-[#002d62] text-white rounded-[20px] font-black text-xs flex items-center justify-center gap-2 shadow-xl active:scale-95 hover:bg-black transition-all">
+                    <Activity size={16} /> Open Full Audit Log
+                 </button>
               </div>
            </div>
         </div>
       )}
 
+      {/* AI Analysis Modal Overlay */}
       {aiAnalysis && (
         <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[60] w-full max-w-2xl px-6 animate-in zoom-in-95 duration-500">
            <div className="bg-[#001f3f]/95 backdrop-blur-3xl rounded-[48px] border border-white/10 p-10 shadow-2xl">
@@ -262,6 +355,7 @@ const WebMap: React.FC<WebMapProps> = ({ projects }) => {
         </div>
       )}
 
+      {/* Loading/Searching Overlay */}
       {isSearching && (
         <div className="absolute inset-0 z-[100] bg-[#001f3f]/40 backdrop-blur-sm flex items-center justify-center">
            <div className="bg-white p-12 rounded-[56px] shadow-2xl text-center">

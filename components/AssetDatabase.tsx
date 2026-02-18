@@ -24,7 +24,10 @@ import {
   Grid,
   Trash2,
   ShieldAlert,
-  Edit2
+  Edit2,
+  Calendar,
+  PlusCircle,
+  Activity
 } from 'lucide-react';
 import { analyzeAssetHealthAI } from '../services/geminiService';
 
@@ -48,6 +51,7 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [activeAsset, setActiveAsset] = useState<Asset | null>(null);
   const [newRecordText, setNewRecordText] = useState('');
+  const [newRecordDate, setNewRecordDate] = useState(new Date().toISOString().split('T')[0]);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Inline Editing State
@@ -87,13 +91,31 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
 
   const handleAddHistory = () => {
     if (activeAsset && newRecordText.trim()) {
+      const dateParts = newRecordDate.split('-');
+      const formattedDate = `${dateParts[2]}/${dateParts[1]}/${parseInt(dateParts[0]) + 543}`;
+      
       const updatedAsset = {
         ...activeAsset,
-        maintenanceHistory: [...(activeAsset.maintenanceHistory || []), `${new Date().toLocaleDateString('th-TH')}: ${newRecordText}`]
+        maintenanceHistory: [`${formattedDate}: ${newRecordText}`, ...(activeAsset.maintenanceHistory || [])]
       };
       onUpdateAsset(updatedAsset);
       setActiveAsset(updatedAsset);
       setNewRecordText('');
+      setNewRecordDate(new Date().toISOString().split('T')[0]);
+    }
+  };
+
+  const handleDeleteHistory = (index: number) => {
+    if (activeAsset && window.confirm('ยืนยันการลบประวัติการซ่อมบำรุงนี้?')) {
+      const updatedHistory = [...activeAsset.maintenanceHistory];
+      updatedHistory.splice(index, 1);
+      
+      const updatedAsset = {
+        ...activeAsset,
+        maintenanceHistory: updatedHistory
+      };
+      onUpdateAsset(updatedAsset);
+      setActiveAsset(updatedAsset);
     }
   };
 
@@ -111,7 +133,6 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
     if (!editingCell) return;
     
     let valueToSave = tempValue;
-    // Cast numeric fields
     if (['maintenanceBudget', 'expectedLifeYears'].includes(editingCell.field)) {
       valueToSave = Number(tempValue);
     }
@@ -149,38 +170,42 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
     }
 
     let colorClass = "";
+    let barColor = "";
     let barWidth = "";
     let icon = null;
 
     switch (condition) {
       case AssetCondition.GOOD:
-        colorClass = "text-emerald-600 bg-emerald-50 border-emerald-100";
-        barWidth = "w-full bg-emerald-500";
+        colorClass = "text-emerald-600 bg-emerald-50 border-emerald-200";
+        barColor = "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]";
+        barWidth = "w-full";
         icon = <CheckCircle size={10} />;
         break;
       case AssetCondition.FAIR:
-        colorClass = "text-amber-600 bg-amber-50 border-amber-100";
-        barWidth = "w-2/3 bg-amber-500";
+        colorClass = "text-amber-600 bg-amber-50 border-amber-200";
+        barColor = "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.3)]";
+        barWidth = "w-[60%]";
         icon = <AlertTriangle size={10} />;
         break;
       case AssetCondition.POOR:
-        colorClass = "text-rose-600 bg-rose-50 border-rose-100";
-        barWidth = "w-1/3 bg-rose-500";
+        colorClass = "text-rose-600 bg-rose-50 border-rose-200";
+        barColor = "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.3)]";
+        barWidth = "w-[30%]";
         icon = <ShieldAlert size={10} />;
         break;
     }
 
     return (
       <div 
-        className="flex flex-col items-center gap-1.5 w-24 mx-auto cursor-pointer group/cell"
+        className="flex flex-col items-center gap-2 w-28 mx-auto cursor-pointer group/cell p-2 rounded-xl hover:bg-slate-100/50 transition-all"
         onClick={() => startEditing(asset, 'condition')}
       >
-        <div className={`px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all group-hover/cell:scale-105 ${colorClass}`}>
+        <div className={`px-2.5 py-1 rounded-lg text-[10px] font-black border uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all group-hover/cell:scale-110 ${colorClass}`}>
           {icon}
           {condition}
         </div>
-        <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-700 ${barWidth}`} />
+        <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden border border-slate-100 shadow-inner">
+          <div className={`h-full rounded-full transition-all duration-1000 ease-out ${barColor} ${barWidth}`} />
         </div>
       </div>
     );
@@ -206,7 +231,7 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
 
     return (
       <div 
-        className="flex items-center justify-end gap-2 group/editable cursor-pointer"
+        className="flex items-center justify-end gap-2 group/editable cursor-pointer p-2 rounded-lg hover:bg-slate-50 transition-colors"
         onClick={() => startEditing(asset, field)}
       >
         <span className="font-bold text-slate-700">
@@ -241,29 +266,29 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b bg-slate-50/50 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="bg-white rounded-[40px] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b bg-slate-50/50 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text" 
               placeholder="ค้นหาพัสดุ/รหัสสินทรัพย์..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#002d62]/20 transition-all"
+              className="w-full pl-12 pr-6 py-3.5 bg-white border border-slate-200 rounded-[20px] text-sm outline-none focus:ring-4 focus:ring-[#002d62]/5 transition-all"
             />
           </div>
           
           <div className="w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-            <div className="flex p-1 bg-slate-100 rounded-xl">
+            <div className="flex p-1.5 bg-slate-200/50 rounded-2xl">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-lg text-xs font-black whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${
+                  className={`px-5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${
                     selectedCategory === cat 
-                      ? 'bg-white text-[#002d62] shadow-sm' 
-                      : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-[#002d62] text-white shadow-xl' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                   }`}
                 >
                   {cat === 'all' ? <Grid size={14} /> : null}
@@ -277,58 +302,66 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
-                <th className="px-6 py-4 border-r w-48">รหัสสินทรัพย์</th>
-                <th className="px-6 py-4 border-r">ประเภทโครงสร้าง</th>
-                <th className="px-6 py-4 border-r text-center w-32">สภาพปัจจุบัน</th>
-                <th className="px-6 py-4 border-r w-32 text-right">ปีที่สร้าง</th>
-                <th className="px-6 py-4 border-r w-32 text-right">อายุใช้งาน (ปี)</th>
-                <th className="px-6 py-4 border-r text-right w-44">งบสะสม (บาท)</th>
-                <th className="px-6 py-4 text-center w-24">Actions</th>
+              <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
+                <th className="px-8 py-5 border-r w-48">รหัสสินทรัพย์</th>
+                <th className="px-8 py-5 border-r">ประเภทโครงสร้าง</th>
+                <th className="px-8 py-5 border-r text-center w-40">สภาพปัจจุบัน (Health)</th>
+                <th className="px-8 py-5 border-r w-32 text-right">ปีที่สร้าง</th>
+                <th className="px-8 py-5 border-r w-32 text-right">อายุใช้งาน (ปี)</th>
+                <th className="px-8 py-5 border-r text-right w-44">งบสะสม (บาท)</th>
+                <th className="px-8 py-5 text-center w-32">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y text-[14px]">
               {filteredAssets.map((asset) => (
                 <React.Fragment key={asset.id}>
-                  <tr className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-6 py-4 border-r font-mono font-bold text-[#002d62]">{asset.id}</td>
-                    <td className="px-6 py-4 border-r">
+                  <tr className="hover:bg-slate-50/80 transition-all group">
+                    <td className="px-8 py-6 border-r font-mono font-bold text-[#002d62]">{asset.id}</td>
+                    <td className="px-8 py-6 border-r">
                       <div className="flex items-center gap-3">
                         {CATEGORY_ICONS[asset.category] || <div className="bg-slate-100 p-2 rounded-lg"><Database size={16} /></div>}
                         <span className="font-bold text-slate-700">{asset.category}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 border-r text-center">
+                    <td className="px-8 py-6 border-r text-center">
                       {getConditionUI(asset.condition, asset)}
                     </td>
-                    <td className="px-6 py-4 border-r text-right">
+                    <td className="px-8 py-6 border-r text-right">
                       {renderEditableText(asset, 'constructionYear')}
                     </td>
-                    <td className="px-6 py-4 border-r text-right">
+                    <td className="px-8 py-6 border-r text-right">
                       {renderEditableText(asset, 'expectedLifeYears')}
                     </td>
-                    <td className="px-6 py-4 border-r text-right">
+                    <td className="px-8 py-6 border-r text-right">
                       {renderEditableText(asset, 'maintenanceBudget', (v) => v.toLocaleString())}
                     </td>
-                    <td className="px-6 py-4 text-center relative">
-                      <button 
-                        onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
-                        className="p-2 hover:bg-slate-100 text-slate-400 rounded-lg transition-all"
-                      >
-                        <MoreVertical size={18} />
-                      </button>
+                    <td className="px-8 py-6 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button 
+                          onClick={() => handleOpenHistory(asset)}
+                          className="p-3 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-xl transition-all"
+                          title="ดูประวัติการซ่อมบำรุง"
+                        >
+                          <History size={18} />
+                        </button>
+                        <button 
+                          onClick={() => setActiveMenuId(activeMenuId === asset.id ? null : asset.id)}
+                          className="p-3 hover:bg-slate-100 text-slate-400 rounded-xl transition-all"
+                        >
+                          <MoreVertical size={18} />
+                        </button>
+                      </div>
 
                       {activeMenuId === asset.id && (
-                        <div className="absolute right-full top-0 mr-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 py-2 text-left animate-in slide-in-from-right-2 duration-200">
-                          <button onClick={() => handleAIAnalysis(asset)} className="w-full px-4 py-3 hover:bg-blue-50 text-[#002d62] text-xs font-black flex items-center gap-3">
-                             <Sparkles size={16} className="text-blue-600" /> วิเคราะห์สภาพ AI
+                        <div className="absolute right-full top-0 mr-4 w-60 bg-white border border-slate-200 rounded-[24px] shadow-2xl z-50 py-3 text-left animate-in slide-in-from-right-4 duration-300 ring-4 ring-[#002d62]/5">
+                          <button onClick={() => handleAIAnalysis(asset)} className="w-full px-5 py-3.5 hover:bg-blue-50 text-[#002d62] text-xs font-black flex items-center gap-3">
+                             <div className="bg-blue-100 p-1.5 rounded-lg"><Sparkles size={16} className="text-blue-600" /></div>
+                             วิเคราะห์สภาพ AI
                           </button>
-                          <button onClick={() => handleOpenHistory(asset)} className="w-full px-4 py-3 hover:bg-slate-50 text-slate-700 text-xs font-black flex items-center gap-3">
-                             <History size={16} className="text-slate-400" /> ประวัติการซ่อม
-                          </button>
-                          <div className="h-px bg-slate-100 my-1"></div>
-                          <button className="w-full px-4 py-3 hover:bg-rose-50 text-rose-600 text-xs font-black flex items-center gap-3">
-                             <Trash2 size={16} /> ลบรายการ
+                          <div className="h-px bg-slate-100 my-2 mx-4"></div>
+                          <button className="w-full px-5 py-3.5 hover:bg-rose-50 text-rose-600 text-xs font-black flex items-center gap-3">
+                             <div className="bg-rose-100 p-1.5 rounded-lg"><Trash2 size={16} /></div>
+                             ลบรายการพัสดุ
                           </button>
                         </div>
                       )}
@@ -336,13 +369,16 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
                   </tr>
                   {aiAnalysis?.id === asset.id && (
                     <tr className="bg-blue-50/50">
-                      <td colSpan={7} className="px-8 py-4 border-b border-blue-100">
-                        <div className="flex items-start gap-4">
-                          <div className="bg-white p-2 rounded-xl shadow-sm"><Sparkles size={18} className="text-blue-600 animate-pulse" /></div>
+                      <td colSpan={7} className="px-12 py-6 border-b border-blue-100 animate-in slide-in-from-top-2 duration-500">
+                        <div className="flex items-start gap-5">
+                          <div className="bg-white p-3 rounded-2xl shadow-lg border border-blue-100"><Sparkles size={22} className="text-blue-600 animate-pulse" /></div>
                           <div className="flex-1">
-                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">AI Health Diagnostics (Lite Model)</p>
-                            <p className="text-sm font-medium text-blue-900 leading-relaxed italic">"{aiAnalysis.text}"</p>
-                            <button onClick={() => setAiAnalysis(null)} className="text-[10px] font-bold text-blue-400 mt-2 hover:text-blue-600">ปิดการวิเคราะห์</button>
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">AI Structural Intelligence Diagnostics</p>
+                              <div className="px-2 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded-md uppercase">Lite v4</div>
+                            </div>
+                            <p className="text-sm font-bold text-[#002d62] leading-relaxed italic border-l-4 border-blue-600 pl-4 py-1">"{aiAnalysis.text}"</p>
+                            <button onClick={() => setAiAnalysis(null)} className="text-[10px] font-black text-blue-400 mt-4 hover:text-blue-600 flex items-center gap-1"><X size={12} /> ปิดหน้าต่างการวิเคราะห์</button>
                           </div>
                         </div>
                       </td>
@@ -355,62 +391,109 @@ const AssetDatabase: React.FC<AssetDatabaseProps> = ({ assets, onUpdateAsset }) 
         </div>
         
         {filteredAssets.length === 0 && (
-          <div className="p-20 text-center bg-slate-50/50">
-            <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Database size={24} className="text-slate-300" />
+          <div className="p-32 text-center bg-slate-50/50">
+            <div className="bg-white border border-slate-100 w-24 h-24 rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl">
+              <Database size={32} className="text-slate-200" />
             </div>
-            <p className="text-slate-400 font-bold">ไม่พบข้อมูลในหมวดหมู่นี้</p>
+            <p className="text-xl font-black text-slate-400 tracking-tight">ไม่พบข้อมูลในหมวดหมู่นี้</p>
+            <p className="text-sm text-slate-300 mt-2 font-medium">ลองเปลี่ยนหมวดหมู่หรือคำค้นหาใหม่</p>
           </div>
         )}
       </div>
 
       {/* History Modal */}
       {isHistoryModalOpen && activeAsset && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh] shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-8 border-b flex justify-between items-center bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="bg-[#002d62] p-2 rounded-xl text-white"><History size={20} /></div>
+        <div className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-[48px] w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-[0_0_100px_rgba(0,0,0,0.2)] animate-in zoom-in-95 duration-300">
+            <div className="p-10 border-b flex justify-between items-center bg-[#002d62] text-white">
+              <div className="flex items-center gap-4">
+                <div className="bg-white/10 p-4 rounded-3xl border border-white/10 backdrop-blur-xl shadow-xl"><History size={28} /></div>
                 <div>
-                  <h3 className="font-black text-[#002d62] leading-none">Maintenance Log</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Asset ID: {activeAsset.id}</p>
+                  <h3 className="text-2xl font-black leading-none">Maintenance History</h3>
+                  <p className="text-[10px] text-blue-300 font-bold uppercase mt-2 tracking-[0.3em]">Asset Registry: {activeAsset.id}</p>
                 </div>
               </div>
-              <button onClick={() => setIsHistoryModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-all text-slate-400"><X size={24} /></button>
+              <button onClick={() => setIsHistoryModalOpen(false)} className="bg-white/10 hover:bg-white/20 p-4 rounded-full transition-all text-white border border-white/10 shadow-lg"><X size={28} /></button>
             </div>
-            <div className="flex-1 overflow-y-auto p-8 space-y-4">
-              {(activeAsset.maintenanceHistory || []).map((h, i) => (
-                <div key={i} className="flex gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 group transition-all">
-                  <Clock size={18} className="text-slate-300 shrink-0 mt-0.5 group-hover:text-blue-400" />
-                  <span className="text-sm font-medium text-slate-700 leading-relaxed">{h}</span>
-                </div>
-              ))}
-              {(activeAsset.maintenanceHistory || []).length === 0 && (
-                <div className="text-center py-16">
-                  <History size={48} className="mx-auto text-slate-100 mb-4" />
-                  <p className="text-slate-400 font-bold">ยังไม่เคยมีประวัติการซ่อมบำรุง</p>
-                </div>
+            
+            <div className="flex-1 overflow-y-auto p-12 bg-slate-50 relative">
+              {/* Timeline Indicator Line */}
+              {(activeAsset.maintenanceHistory || []).length > 0 && (
+                <div className="absolute left-[67px] top-12 bottom-12 w-1 bg-slate-200 rounded-full"></div>
               )}
+
+              <div className="space-y-10 relative">
+                {(activeAsset.maintenanceHistory || []).map((h, i) => {
+                  const [date, ...rest] = h.split(':');
+                  const description = rest.join(':').trim();
+                  return (
+                    <div key={i} className="flex gap-10 group animate-in slide-in-from-left-6 duration-500" style={{ animationDelay: `${i * 100}ms` }}>
+                      <div className="flex flex-col items-center shrink-0">
+                         <div className="bg-white w-12 h-12 rounded-2xl border-[6px] border-slate-100 shadow-xl flex items-center justify-center text-blue-600 z-10 group-hover:border-[#002d62]/10 group-hover:scale-110 transition-all">
+                            <Clock size={18} />
+                         </div>
+                      </div>
+                      <div className="flex-1 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all relative">
+                        <div className="flex justify-between items-start mb-4">
+                           <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-4 py-1.5 rounded-xl border border-blue-100 shadow-sm">{date}</span>
+                           <button 
+                             onClick={() => handleDeleteHistory(i)}
+                             className="text-slate-200 hover:text-rose-500 p-2 rounded-xl transition-all hover:bg-rose-50"
+                           >
+                             <Trash2 size={16} />
+                           </button>
+                        </div>
+                        <p className="text-base font-bold text-slate-700 leading-relaxed">{description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {(activeAsset.maintenanceHistory || []).length === 0 && (
+                  <div className="text-center py-24 bg-white rounded-[48px] border-4 border-dashed border-slate-200 shadow-inner">
+                    <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
+                       <History size={48} className="text-slate-200" />
+                    </div>
+                    <p className="text-lg font-black text-slate-400 uppercase tracking-widest">ยังไม่มีประวัติการซ่อมบำรุง</p>
+                    <p className="text-sm text-slate-300 mt-2 font-medium">เริ่มต้นเพิ่มรายการใหม่โดยใช้ฟอร์มด้านล่าง</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="p-8 border-t bg-white">
-              <div className="flex flex-col gap-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">เพิ่มบันทึกการซ่อมบำรุงใหม่</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={newRecordText}
-                    onChange={(e) => setNewRecordText(e.target.value)}
-                    placeholder="รายละเอียดการซ่อม..."
-                    className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#002d62]/10 transition-all font-medium"
-                  />
-                  <button 
-                    onClick={handleAddHistory}
-                    disabled={!newRecordText.trim()}
-                    className="bg-[#002d62] text-white px-6 py-3 rounded-xl text-sm font-black flex items-center gap-2 hover:bg-black transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                  >
-                    <Save size={18} /> บันทึก
-                  </button>
+
+            <div className="p-12 border-t bg-white">
+              <div className="bg-slate-100/50 p-10 rounded-[40px] border border-slate-200 shadow-inner">
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8 flex items-center gap-3">
+                   <PlusCircle size={18} className="text-[#002d62]" /> บันทึกข้อมูลการซ่อมบำรุงใหม่
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                   <div className="relative">
+                      <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                        type="date" 
+                        value={newRecordDate}
+                        onChange={(e) => setNewRecordDate(e.target.value)}
+                        className="w-full pl-14 pr-8 py-4 bg-white border border-slate-200 rounded-[24px] text-sm font-bold outline-none focus:ring-4 focus:ring-[#002d62]/5 transition-all shadow-sm"
+                      />
+                   </div>
+                   <div className="relative">
+                      <Edit2 className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input 
+                        type="text" 
+                        value={newRecordText}
+                        onChange={(e) => setNewRecordText(e.target.value)}
+                        placeholder="รายละเอียด เช่น เปลี่ยนหลอดไฟ LED, ลอกตะกอนท่อ..."
+                        className="w-full pl-14 pr-8 py-4 bg-white border border-slate-200 rounded-[24px] text-sm font-bold outline-none focus:ring-4 focus:ring-[#002d62]/5 transition-all shadow-sm"
+                      />
+                   </div>
                 </div>
+                <button 
+                  onClick={handleAddHistory}
+                  disabled={!newRecordText.trim()}
+                  className="w-full bg-[#002d62] text-white py-5 rounded-[24px] font-black text-sm flex items-center justify-center gap-4 hover:bg-black transition-all shadow-2xl active:scale-95 disabled:opacity-50"
+                >
+                  <Save size={22} /> ยืนยันการบันทึกประวัติพัสดุ
+                </button>
               </div>
             </div>
           </div>

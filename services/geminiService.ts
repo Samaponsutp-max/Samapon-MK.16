@@ -1,31 +1,96 @@
 
-import { GoogleGenAI } from "@google/genai";
-import { Project, DevelopmentPlan, Asset } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { Project, DevelopmentPlan, Asset, AIProjectAnalysis } from "../types";
 
 /**
- * Summarizes project status using gemini-flash-lite-latest for low latency.
+ * Summarizes project status using gemini-3-flash-preview.
  */
-export async function getProjectSummaryAI(project: Project): Promise<string> {
+export async function getProjectSummaryAI(project: Project): Promise<AIProjectAnalysis> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
-      model: 'gemini-flash-lite-latest',
-      contents: `สรุปสถานะโครงการโครงสร้างพื้นฐานนี้เป็นภาษาไทยสั้นๆ (ใช้โหมดความเร็วสูง)
+      model: 'gemini-3-flash-preview',
+      contents: `วิเคราะห์และสรุปสถานะโครงการโครงสร้างพื้นฐานนี้อย่างละเอียดในรูปแบบ JSON ภาษาไทย
       ชื่อโครงการ: ${project.name}
       สถานะ: ${project.status}
       ความคืบหน้า: ${project.progressPercent}%
       งบประมาณ: ${project.budgetActual.toLocaleString()} บาท
-      ปัญหา: ${project.problems}`,
+      ผู้รับเหมา: ${project.contractor}
+      วิศวกร: ${project.engineer}
+      ปัญหา: ${project.problems}
+      
+      ให้ประเมินความเสี่ยง (risks) และรายการที่ควรดำเนินการ (actionItems) ตามความเหมาะสม`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            summary: { type: Type.STRING, description: "สรุปภาพรวมของโครงการ" },
+            risks: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  severity: { type: Type.STRING, description: "ระดับความรุนแรง: LOW, MEDIUM, HIGH" },
+                  description: { type: Type.STRING }
+                },
+                required: ["title", "severity", "description"]
+              }
+            },
+            actionItems: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "รายการสิ่งที่ต้องดำเนินการถัดไป"
+            },
+            healthScore: { type: Type.NUMBER, description: "คะแนนสุขภาพโครงการ 0-100" }
+          },
+          required: ["summary", "risks", "actionItems", "healthScore"]
+        }
+      }
     });
-    return response.text || "ไม่สามารถดึงข้อมูลสรุปได้";
+    
+    const text = response.text || "{}";
+    return JSON.parse(text) as AIProjectAnalysis;
   } catch (error) {
-    console.error("Lite AI Insight Error:", error);
-    return "เกิดข้อผิดพลาดในการเรียก AI";
+    console.error("Structured AI Insight Error:", error);
+    return {
+      summary: "ไม่สามารถประมวลผลข้อมูลได้ในขณะนี้",
+      risks: [],
+      actionItems: ["ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต", "ลองใหม่อีกครั้งในภายหลัง"],
+      healthScore: 0
+    };
   }
 }
 
 /**
- * Analyzes asset health using gemini-flash-lite-latest for low latency.
+ * Deep Strategic Insight using gemini-3-pro-preview with thinking mode for complex reasoning.
+ */
+export async function getDeepStrategicInsightAI(project: Project): Promise<string> {
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: `ในฐานะผู้เชี่ยวชาญด้านการวางแผนยุทธศาสตร์เมืองและโครงสร้างพื้นฐานระดับสูง โปรดวิเคราะห์โครงการนี้เชิงลึก:
+      ชื่อโครงการ: ${project.name}
+      งบประมาณ: ${project.budgetActual.toLocaleString()} บาท
+      ความคืบหน้า: ${project.progressPercent}%
+      ปัญหาที่พบ: ${project.problems}
+      
+      โปรดวิเคราะห์ผลกระทบเชิงเศรษฐศาสตร์มหภาค, ความยั่งยืนในระยะ 20 ปี, และการบูรณาการเข้ากับระบบ Smart City ของไทยในอนาคต โดยใช้ตรรกะเหตุผลที่ซับซ้อนที่สุดเท่าที่เป็นไปได้`,
+      config: {
+        thinkingConfig: { thinkingBudget: 32768 }
+      }
+    });
+    return response.text || "ไม่มีผลลัพธ์จากการวิเคราะห์เชิงลึก";
+  } catch (error) {
+    console.error("Deep Insight Error:", error);
+    return "เกิดข้อผิดพลาดในการวิเคราะห์เชิงลึก";
+  }
+}
+
+/**
+ * Analyzes asset health using gemini-flash-lite-latest.
  */
 export async function analyzeAssetHealthAI(asset: Asset): Promise<string> {
   try {
@@ -50,13 +115,16 @@ export async function analyzeAssetHealthAI(asset: Asset): Promise<string> {
 export async function editImageAI(base64Image: string, prompt: string): Promise<string | null> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Strip metadata from base64 if present
+    const cleanBase64 = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
+    
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
           {
             inlineData: {
-              data: base64Image.split(',')[1] || base64Image,
+              data: cleanBase64,
               mimeType: 'image/png',
             },
           },
@@ -67,7 +135,7 @@ export async function editImageAI(base64Image: string, prompt: string): Promise<
 
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
       }
     }
     return null;

@@ -75,6 +75,17 @@ export interface Project {
   maintenanceLogs?: MaintenanceLog[];
 }
 
+export interface AIProjectAnalysis {
+  summary: string;
+  risks: {
+    title: string;
+    severity: 'LOW' | 'MEDIUM' | 'HIGH';
+    description: string;
+  }[];
+  actionItems: string[];
+  healthScore: number;
+}
+
 export interface DevelopmentPlan {
   id: string;
   planId: string;
@@ -116,4 +127,23 @@ export interface UserAccount {
   department: string;
   email: string;
   lastLogin?: string;
+}
+
+export interface SystemSettings {
+  orgNameTh: string;
+  orgNameEn: string;
+  fiscalYear: string;
+  areaId: string;
+  darkMode: boolean;
+  compactView: boolean;
+  fontSize: 'small' | 'medium' | 'large';
+  notificationsEnabled: boolean;
+  apiUrl: string;
+}
+
+export interface SystemSnapshot {
+  id: string;
+  timestamp: string;
+  createdBy: string;
+  settings: SystemSettings;
 }

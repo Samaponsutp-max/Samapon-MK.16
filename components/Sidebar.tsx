@@ -15,16 +15,19 @@ import {
   Info,
   ChevronRight,
   History,
-  Shield
+  Shield,
+  Type
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   userRole: string;
+  fontSize?: 'small' | 'medium' | 'large';
+  setFontSize?: (size: 'small' | 'medium' | 'large') => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole, fontSize = 'medium', setFontSize }) => {
   const menuItems = [
     { id: 'dashboard', label: 'ภาพรวม', icon: LayoutDashboard, roles: ['Admin', 'กองช่าง', 'ผู้บริหาร', 'เจ้าหน้าที่การเงิน'] },
     { id: 'projects', label: 'โครงการ', icon: ClipboardList, roles: ['Admin', 'กองช่าง', 'เจ้าหน้าที่การเงิน'] },
@@ -39,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole }) 
   const filteredItems = menuItems.filter(item => item.roles.includes(userRole));
 
   return (
-    <div className="w-64 bg-[#002d62] text-white flex flex-col h-screen fixed left-0 top-0 z-40 shadow-2xl overflow-hidden">
+    <div className="w-64 bg-[#002d62] text-white flex flex-col h-screen fixed left-0 top-0 z-40 shadow-2xl overflow-hidden no-print">
       {/* Brand Header */}
       <div className="p-6 flex flex-col items-center gap-4 bg-[#001f3f] border-b border-white/5">
         <div className="w-20 h-20 bg-white rounded-full p-1.5 shadow-xl relative overflow-hidden group">
@@ -53,8 +56,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole }) 
           />
         </div>
         <div className="text-center">
-          <h1 className="text-sm font-extrabold leading-tight tracking-wide">Modern Civic Tech</h1>
-          <p className="text-[10px] text-blue-300 font-medium tracking-tighter opacity-80 uppercase">Infrastructure Blueprint</p>
+          <h1 className="text-lg font-black leading-tight tracking-wide text-white">อบต.เหนือเมือง</h1>
+          <p className="text-[10px] text-blue-300 font-bold tracking-widest opacity-80 uppercase mt-1">อ.เมือง จ.ร้อยเอ็ด</p>
         </div>
       </div>
 
@@ -111,14 +114,39 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userRole }) 
         )}
       </nav>
 
-      <div className="p-6 mt-auto">
+      <div className="p-4 space-y-4">
+        {/* Quick Font Switcher */}
+        {setFontSize && (
+          <div className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-md">
+            <div className="flex items-center gap-2 mb-3 px-1">
+              <Type size={12} className="text-blue-400" />
+              <p className="text-[9px] font-black text-blue-300 uppercase tracking-widest">Font Size</p>
+            </div>
+            <div className="flex gap-1">
+              {(['small', 'medium', 'large'] as const).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => setFontSize(size)}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${
+                    fontSize === size 
+                    ? 'bg-blue-600 text-white shadow-lg' 
+                    : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60'
+                  }`}
+                >
+                  {size === 'small' ? 'S' : size === 'medium' ? 'M' : 'L'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="bg-white/5 rounded-2xl p-4 border border-white/10 backdrop-blur-md">
            <div className="flex items-center gap-2 mb-2">
              <Shield size={12} className="text-blue-400" />
              <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest">System Admin</p>
            </div>
            <p className="text-[12px] font-bold truncate">อบต.เหนือเมือง</p>
-           <p className="text-[10px] text-white/40 mt-1">Version 2.0.1 Stable</p>
+           <p className="text-[10px] text-white/40 mt-1">Version 2.1.0 Stable</p>
         </div>
       </div>
     </div>
